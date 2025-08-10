@@ -237,7 +237,34 @@ def display_statistics_page(df):
     """Display the Statistics page"""
     st.title("📊 Testing Statistics Dashboard")
     
-    # Overall metrics
+    # Overall metrics with custom styling
+    st.markdown("""
+    <style>
+    div[data-testid="metric-container"] {
+        background-color: rgba(39, 51, 74, 0.6) !important;
+        border: 1px solid #4a5568 !important;
+        padding: 1em !important;
+        border-radius: 10px !important;
+        color: white !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    }
+    div[data-testid="metric-container"] > div {
+        color: white !important;
+    }
+    div[data-testid="metric-container"] label {
+        color: #e2e8f0 !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="metric-container"] [data-testid="metric-value"] {
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="metric-container"] [data-testid="metric-delta"] {
+        font-weight: 600 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     col1, col2, col3, col4, col5 = st.columns(5)
     
     total_tests = len(df)
@@ -252,24 +279,24 @@ def display_statistics_page(df):
     
     with col1:
         st.metric("Total Test Cases", f"{total_tests:,}")
-        st.metric("Pass Rate", f"{(passed/total_tests*100):.1f}%", delta=f"{passed} passed")
+        st.metric("Pass Rate", f"{(passed/total_tests*100):.1f}%", delta=f"{passed} passed", delta_color="normal")
     
     with col2:
         st.metric("Total Offers", f"{total_offers:,}")
-        st.metric("Fail Rate", f"{(failed/total_tests*100):.1f}%", delta=f"-{failed} failed")
+        st.metric("Fail Rate", f"{(failed/total_tests*100):.1f}%", delta=f"-{failed} failed", delta_color="inverse")
     
     with col3:
         st.metric("Total Testers", f"{total_testers:,}")
-        st.metric("Blocked Rate", f"{(blocked/total_tests*100):.1f}%", delta=f"{blocked} blocked")
+        st.metric("Blocked Rate", f"{(blocked/total_tests*100):.1f}%", delta=f"{blocked} blocked", delta_color="off")
     
     with col4:
-        st.metric("Passed", f"{passed:,}", delta=f"{(passed/total_tests*100):.1f}%")
-        st.metric("Pending Rate", f"{(pending/total_tests*100):.1f}%", delta=f"{pending} pending")
+        st.metric("Passed", f"{passed:,}", delta=f"{(passed/total_tests*100):.1f}%", delta_color="normal")
+        st.metric("Pending Rate", f"{(pending/total_tests*100):.1f}%", delta=f"{pending} pending", delta_color="off")
     
     with col5:
-        st.metric("Failed", f"{failed:,}", delta=f"-{(failed/total_tests*100):.1f}%")
+        st.metric("Failed", f"{failed:,}", delta=f"-{(failed/total_tests*100):.1f}%", delta_color="inverse")
         issues_total = failed + blocked
-        st.metric("Total Issues", f"{issues_total:,}", delta=f"-{(issues_total/total_tests*100):.1f}%")
+        st.metric("Total Issues", f"{issues_total:,}", delta=f"-{(issues_total/total_tests*100):.1f}%", delta_color="inverse")
     
     st.markdown("---")
     
@@ -962,8 +989,75 @@ def main():
             page = "🏠 Home"
         
         st.markdown("---")
-        st.caption("Created By: Muhammad Ahsan")
-        st.caption("Built Using Python and Streamlit")
+        
+        # Animated elements before footer
+        st.markdown("""
+        <style>
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        @keyframes slide {
+            0% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            100% { transform: translateX(-10px); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.8), 0 0 30px rgba(102, 126, 234, 0.4); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .animated-bar {
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #667eea);
+            background-size: 200% 100%;
+            animation: slide 3s ease-in-out infinite;
+            border-radius: 2px;
+            margin: 15px 0;
+        }
+        
+        .floating-icons {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 10px;
+        }
+        
+        .floating-icon {
+            font-size: 1.5rem;
+            animation: float 2s ease-in-out infinite;
+            color: #667eea;
+        }
+        
+        .floating-icon:nth-child(1) { animation-delay: 0s; }
+        .floating-icon:nth-child(2) { animation-delay: 0.5s; }
+        .floating-icon:nth-child(3) { animation-delay: 1s; }
+        
+        .stats-animation {
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+            height: 2px;
+            animation: slide 2s linear infinite;
+            margin: 10px 0;
+        }
+        </style>
+        
+        <div class="animated-bar"></div>
+        <div class="floating-icons">
+            <span class="floating-icon">📊</span>
+            <span class="floating-icon">🔍</span>
+            <span class="floating-icon">✨</span>
+        </div>
+        <div class="stats-animation"></div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("Built with ❤️ using Streamlit")
         st.caption("Version 1.0.0")
     
     # Main content
@@ -1064,8 +1158,29 @@ def main():
             df = st.session_state.data
             st.success(f"✅ Data loaded successfully!")
             
-            # Quick overview
+            # Quick overview with better styling
             st.subheader("📊 Quick Overview")
+            
+            # Add custom CSS for home page metrics
+            st.markdown("""
+            <style>
+            div[data-testid="metric-container"] {
+                background-color: rgba(39, 51, 74, 0.8) !important;
+                border: 1px solid #4a5568 !important;
+                padding: 1em !important;
+                border-radius: 10px !important;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+            }
+            div[data-testid="metric-container"] label {
+                color: #e2e8f0 !important;
+            }
+            div[data-testid="metric-container"] [data-testid="metric-value"] {
+                color: white !important;
+                font-size: 1.5rem !important;
+                font-weight: bold !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             
             col1, col2, col3, col4 = st.columns(4)
             
