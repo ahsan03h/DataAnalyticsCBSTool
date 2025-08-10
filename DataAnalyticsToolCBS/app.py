@@ -445,14 +445,70 @@ def display_issues_page(df):
         (issues_df['Status'].isin(status_filter))
     ]
     
-    # Display metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Issues", len(filtered_issues))
-    with col2:
-        st.metric("Failed", len(filtered_issues[filtered_issues['Status'] == 'Fail']))
-    with col3:
-        st.metric("Blocked", len(filtered_issues[filtered_issues['Status'] == 'Blocked']))
+    # Display metrics using custom HTML
+    total_issues = len(filtered_issues)
+    failed_count = len(filtered_issues[filtered_issues['Status'] == 'Fail'])
+    blocked_count = len(filtered_issues[filtered_issues['Status'] == 'Blocked'])
+    pending_count = len(filtered_issues[filtered_issues['Status'] == 'Pending'])
+    
+    st.markdown(f"""
+    <style>
+    .issues-metrics {{
+        display: flex;
+        gap: 20px;
+        margin: 20px 0;
+    }}
+    .issue-metric-card {{
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 12px;
+        padding: 20px;
+        flex: 1;
+        text-align: center;
+        border: 1px solid #475569;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }}
+    .issue-metric-label {{
+        color: #94a3b8;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }}
+    .issue-metric-value {{
+        color: #f1f5f9;
+        font-size: 36px;
+        font-weight: 700;
+    }}
+    .failed-card {{
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+    }}
+    .blocked-card {{
+        background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+    }}
+    .pending-card {{
+        background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+    }}
+    </style>
+    
+    <div class="issues-metrics">
+        <div class="issue-metric-card">
+            <div class="issue-metric-label">Total Issues</div>
+            <div class="issue-metric-value">{total_issues}</div>
+        </div>
+        <div class="issue-metric-card failed-card">
+            <div class="issue-metric-label">Failed</div>
+            <div class="issue-metric-value">{failed_count}</div>
+        </div>
+        <div class="issue-metric-card blocked-card">
+            <div class="issue-metric-label">Blocked</div>
+            <div class="issue-metric-value">{blocked_count}</div>
+        </div>
+        <div class="issue-metric-card pending-card">
+            <div class="issue-metric-label">Pending</div>
+            <div class="issue-metric-value">{pending_count}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Display issues table
     st.subheader(f"📋 Issues for {selected_date}")
@@ -637,14 +693,65 @@ def display_comparison_page(df):
     if conflicts:
         conflicts_df = pd.DataFrame(conflicts)
         
-        # Display metrics
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Conflicts", len(conflicts_df))
-        with col2:
-            st.metric("Affected Offers", conflicts_df['Offer ID'].nunique())
-        with col3:
-            st.metric("Affected Test Cases", conflicts_df['TC #'].nunique())
+        # Display metrics with custom HTML
+        total_conflicts = len(conflicts_df)
+        affected_offers = conflicts_df['Offer ID'].nunique()
+        affected_test_cases = conflicts_df['TC #'].nunique()
+        
+        st.markdown(f"""
+        <style>
+        .comparison-metrics {{
+            display: flex;
+            gap: 20px;
+            margin: 20px 0 30px 0;
+        }}
+        .comparison-card {{
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 12px;
+            padding: 25px;
+            flex: 1;
+            text-align: center;
+            border: 1px solid #475569;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }}
+        .comparison-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }}
+        .comparison-label {{
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        .comparison-value {{
+            color: #f1f5f9;
+            font-size: 36px;
+            font-weight: 700;
+        }}
+        .conflicts-card {{
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        }}
+        </style>
+        
+        <div class="comparison-metrics">
+            <div class="comparison-card conflicts-card">
+                <div class="comparison-label">Total Conflicts</div>
+                <div class="comparison-value">{total_conflicts}</div>
+            </div>
+            <div class="comparison-card">
+                <div class="comparison-label">Affected Offers</div>
+                <div class="comparison-value">{affected_offers}</div>
+            </div>
+            <div class="comparison-card">
+                <div class="comparison-label">Affected Test Cases</div>
+                <div class="comparison-value">{affected_test_cases}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         st.markdown("---")
         
@@ -766,28 +873,86 @@ def display_summary_page(df):
     """Display the Summary page with bug analysis"""
     st.title("📝 Test Summary & Analysis")
     
-    # Overall summary
-    st.subheader("🎯 Executive Summary")
-    
+    # Overall summary with custom HTML
     total_tests = len(df)
     pass_rate = (df['Status'] == 'Pass').sum() / total_tests * 100
     fail_rate = (df['Status'] == 'Fail').sum() / total_tests * 100
+    test_coverage = df['Offer ID'].nunique()
+    team_size = df['Tester Name'].nunique()
     
-    col1, col2, col3 = st.columns(3)
+    st.subheader("🎯 Executive Summary")
     
-    with col1:
-        if pass_rate >= 80:
-            st.success(f"✅ Overall Pass Rate: {pass_rate:.1f}%")
-        elif pass_rate >= 60:
-            st.warning(f"⚠️ Overall Pass Rate: {pass_rate:.1f}%")
-        else:
-            st.error(f"❌ Overall Pass Rate: {pass_rate:.1f}%")
+    st.markdown(f"""
+    <style>
+    .summary-metrics {{
+        display: flex;
+        gap: 20px;
+        margin: 20px 0 30px 0;
+    }}
+    .summary-card {{
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 12px;
+        padding: 25px;
+        flex: 1;
+        text-align: center;
+        border: 1px solid #475569;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }}
+    .summary-label {{
+        color: #94a3b8;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }}
+    .summary-value {{
+        color: #f1f5f9;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }}
+    .summary-status {{
+        font-size: 14px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-top: 5px;
+    }}
+    .status-good {{
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }}
+    .status-warning {{
+        background: rgba(251, 146, 60, 0.2);
+        color: #fb923c;
+    }}
+    .status-bad {{
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }}
+    </style>
     
-    with col2:
-        st.metric("Total Test Coverage", f"{df['Offer ID'].nunique()} offers")
-    
-    with col3:
-        st.metric("Testing Team Size", f"{df['Tester Name'].nunique()} testers")
+    <div class="summary-metrics">
+        <div class="summary-card">
+            <div class="summary-label">Overall Pass Rate</div>
+            <div class="summary-value">{pass_rate:.1f}%</div>
+            <div class="summary-status {'status-good' if pass_rate >= 80 else 'status-warning' if pass_rate >= 60 else 'status-bad'}">
+                {'✅ Excellent' if pass_rate >= 80 else '⚠️ Needs Attention' if pass_rate >= 60 else '❌ Critical'}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Test Coverage</div>
+            <div class="summary-value">{test_coverage}</div>
+            <div class="summary-status status-good">offers tested</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Testing Team Size</div>
+            <div class="summary-value">{team_size}</div>
+            <div class="summary-status status-good">active testers</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -963,22 +1128,118 @@ def display_tester_statistics(df):
     
     tester_data = df[df['Tester Name'] == selected_tester]
     
-    # Metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
+    # Calculate metrics
     total_tests = len(tester_data)
     passed = (tester_data['Status'] == 'Pass').sum()
     failed = (tester_data['Status'] == 'Fail').sum()
     blocked = (tester_data['Status'] == 'Blocked').sum()
+    pending = (tester_data['Status'] == 'Pending').sum()
+    pass_rate = (passed/total_tests*100) if total_tests > 0 else 0
+    fail_rate = (failed/total_tests*100) if total_tests > 0 else 0
+    blocked_rate = (blocked/total_tests*100) if total_tests > 0 else 0
+    pending_rate = (pending/total_tests*100) if total_tests > 0 else 0
     
-    with col1:
-        st.metric("Total Tests", total_tests)
-    with col2:
-        st.metric("Passed", passed, delta=f"{(passed/total_tests*100):.1f}%")
-    with col3:
-        st.metric("Failed", failed, delta=f"-{(failed/total_tests*100):.1f}%")
-    with col4:
-        st.metric("Blocked", blocked, delta=f"{(blocked/total_tests*100):.1f}%")
+    # Display metrics with custom HTML
+    st.markdown(f"""
+    <style>
+    .tester-metrics {{
+        display: flex;
+        gap: 20px;
+        margin: 20px 0 30px 0;
+    }}
+    .tester-card {{
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 12px;
+        padding: 20px;
+        flex: 1;
+        text-align: center;
+        border: 1px solid #475569;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        min-width: 150px;
+    }}
+    .tester-label {{
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+    }}
+    .tester-value {{
+        color: #f1f5f9;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }}
+    .tester-percent {{
+        font-size: 14px;
+        padding: 3px 8px;
+        border-radius: 15px;
+        display: inline-block;
+        font-weight: 600;
+    }}
+    .percent-pass {{
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }}
+    .percent-fail {{
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }}
+    .percent-blocked {{
+        background: rgba(251, 146, 60, 0.2);
+        color: #fb923c;
+    }}
+    .percent-pending {{
+        background: rgba(168, 85, 247, 0.2);
+        color: #c084fc;
+    }}
+    .tester-name-card {{
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        margin-bottom: 20px;
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+    }}
+    .tester-name {{
+        color: white;
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+    }}
+    </style>
+    
+    <div class="tester-name-card">
+        <div class="tester-name">📊 {selected_tester}'s Performance</div>
+    </div>
+    
+    <div class="tester-metrics">
+        <div class="tester-card">
+            <div class="tester-label">Total Tests</div>
+            <div class="tester-value">{total_tests}</div>
+        </div>
+        <div class="tester-card">
+            <div class="tester-label">Passed</div>
+            <div class="tester-value">{passed}</div>
+            <div class="tester-percent percent-pass">{pass_rate:.1f}%</div>
+        </div>
+        <div class="tester-card">
+            <div class="tester-label">Failed</div>
+            <div class="tester-value">{failed}</div>
+            <div class="tester-percent percent-fail">{fail_rate:.1f}%</div>
+        </div>
+        <div class="tester-card">
+            <div class="tester-label">Blocked</div>
+            <div class="tester-value">{blocked}</div>
+            <div class="tester-percent percent-blocked">{blocked_rate:.1f}%</div>
+        </div>
+        <div class="tester-card">
+            <div class="tester-label">Pending</div>
+            <div class="tester-value">{pending}</div>
+            <div class="tester-percent percent-pending">{pending_rate:.1f}%</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -1059,72 +1320,186 @@ def main():
         
         st.markdown("---")
         
-        # Animated elements before footer
-        st.markdown("""
-        <style>
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        
-        @keyframes slide {
-            0% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            100% { transform: translateX(-10px); }
-        }
-        
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
-            50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.8), 0 0 30px rgba(102, 126, 234, 0.4); }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .animated-bar {
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #667eea);
-            background-size: 200% 100%;
-            animation: slide 3s ease-in-out infinite;
-            border-radius: 2px;
-            margin: 15px 0;
-        }
-        
-        .floating-icons {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            padding: 10px;
-        }
-        
-        .floating-icon {
-            font-size: 1.5rem;
-            animation: float 2s ease-in-out infinite;
-            color: #667eea;
-        }
-        
-        .floating-icon:nth-child(1) { animation-delay: 0s; }
-        .floating-icon:nth-child(2) { animation-delay: 0.5s; }
-        .floating-icon:nth-child(3) { animation-delay: 1s; }
-        
-        .stats-animation {
-            background: linear-gradient(90deg, transparent, #667eea, transparent);
-            height: 2px;
-            animation: slide 2s linear infinite;
-            margin: 10px 0;
-        }
-        </style>
-        
-        <div class="animated-bar"></div>
-        <div class="floating-icons">
-            <span class="floating-icon">📊</span>
-            <span class="floating-icon">🔍</span>
-            <span class="floating-icon">✨</span>
-        </div>
-        <div class="stats-animation"></div>
-        """, unsafe_allow_html=True)
+        # Quick Stats Panel instead of animations
+        if st.session_state.file_uploaded and st.session_state.data is not None:
+            df_stats = st.session_state.data
+            total_tests = len(df_stats)
+            pass_percent = (df_stats['Status'] == 'Pass').sum() / total_tests * 100 if total_tests > 0 else 0
+            today_tests = len(df_stats[pd.to_datetime(df_stats['Test Date and Time']).dt.date == datetime.now().date()])
+            
+            st.markdown(f"""
+            <style>
+            .sidebar-stats {{
+                background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                border-radius: 15px;
+                padding: 15px;
+                margin: 15px 0;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            }}
+            .stat-row {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin: 8px 0;
+                padding: 5px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+            .stat-label {{
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 12px;
+                font-weight: 500;
+            }}
+            .stat-value {{
+                color: white;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            .quick-actions {{
+                background: rgba(30, 41, 59, 0.8);
+                border-radius: 12px;
+                padding: 12px;
+                margin: 15px 0;
+            }}
+            .action-title {{
+                color: #e2e8f0;
+                font-size: 13px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                text-align: center;
+            }}
+            .tip-box {{
+                background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+                border-radius: 10px;
+                padding: 12px;
+                margin: 10px 0;
+            }}
+            .tip-text {{
+                color: white;
+                font-size: 12px;
+                line-height: 1.4;
+                text-align: center;
+            }}
+            </style>
+            
+            <div class="sidebar-stats">
+                <div class="stat-row">
+                    <span class="stat-label">📊 Total Tests</span>
+                    <span class="stat-value">{total_tests:,}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">✅ Pass Rate</span>
+                    <span class="stat-value">{pass_percent:.1f}%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">📅 Today's Tests</span>
+                    <span class="stat-value">{today_tests}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">👥 Active Testers</span>
+                    <span class="stat-value">{df_stats['Tester Name'].nunique()}</span>
+                </div>
+            </div>
+            
+            <div class="quick-actions">
+                <div class="action-title">⚡ Quick Tips</div>
+                <div class="tip-box">
+                    <div class="tip-text">
+                        {'💡 Check the Comparison page to find conflicting test results!' if pass_percent < 80 else '🎯 Great pass rate! Review the Summary for insights.'}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # When no file is uploaded, show helpful info
+            st.markdown("""
+            <style>
+            .help-panel {{
+                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                border-radius: 15px;
+                padding: 20px;
+                margin: 15px 0;
+            }}
+            .help-title {{
+                color: #f1f5f9;
+                font-size: 14px;
+                font-weight: 700;
+                margin-bottom: 15px;
+                text-align: center;
+            }}
+            .help-item {{
+                color: #cbd5e1;
+                font-size: 12px;
+                margin: 8px 0;
+                padding-left: 20px;
+                position: relative;
+            }}
+            .help-item:before {{
+                content: "→";
+                position: absolute;
+                left: 0;
+                color: #7c3aed;
+            }}
+            .status-legend {{
+                background: rgba(30, 41, 59, 0.8);
+                border-radius: 12px;
+                padding: 15px;
+                margin: 15px 0;
+            }}
+            .legend-title {{
+                color: #e2e8f0;
+                font-size: 13px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                text-align: center;
+            }}
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                margin: 8px 0;
+            }}
+            .legend-color {{
+                width: 20px;
+                height: 20px;
+                border-radius: 5px;
+                margin-right: 10px;
+            }}
+            .legend-text {{
+                color: #cbd5e1;
+                font-size: 12px;
+            }}
+            </style>
+            
+            <div class="help-panel">
+                <div class="help-title">📋 Required Excel Columns</div>
+                <div class="help-item">TC # (Test Case Number)</div>
+                <div class="help-item">Offer ID</div>
+                <div class="help-item">Test Scenario</div>
+                <div class="help-item">Status (Pass/Fail/Blocked/Pending)</div>
+                <div class="help-item">Comments</div>
+                <div class="help-item">Tester Name</div>
+                <div class="help-item">Test Date and Time</div>
+            </div>
+            
+            <div class="status-legend">
+                <div class="legend-title">🎨 Status Color Guide</div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #10b981;"></div>
+                    <div class="legend-text">Pass - Test Successful</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444;"></div>
+                    <div class="legend-text">Fail - Issues Found</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f59e0b;"></div>
+                    <div class="legend-text">Blocked - Cannot Test</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #7c3aed;"></div>
+                    <div class="legend-text">Pending - In Progress</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.caption("Built with ❤️ using Streamlit")
         st.caption("Version 1.0.0")
