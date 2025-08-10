@@ -237,36 +237,7 @@ def display_statistics_page(df):
     """Display the Statistics page"""
     st.title("📊 Testing Statistics Dashboard")
     
-    # Overall metrics with custom styling
-    st.markdown("""
-    <style>
-    div[data-testid="metric-container"] {
-        background-color: rgba(39, 51, 74, 0.6) !important;
-        border: 1px solid #4a5568 !important;
-        padding: 1em !important;
-        border-radius: 10px !important;
-        color: white !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-    }
-    div[data-testid="metric-container"] > div {
-        color: white !important;
-    }
-    div[data-testid="metric-container"] label {
-        color: #e2e8f0 !important;
-        font-weight: 600 !important;
-    }
-    div[data-testid="metric-container"] [data-testid="metric-value"] {
-        color: white !important;
-        font-weight: 700 !important;
-    }
-    div[data-testid="metric-container"] [data-testid="metric-delta"] {
-        font-weight: 600 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
+    # Calculate metrics
     total_tests = len(df)
     total_offers = df['Offer ID'].nunique()
     total_testers = df['Tester Name'].nunique()
@@ -277,26 +248,124 @@ def display_statistics_page(df):
     blocked = status_counts.get('Blocked', 0)
     pending = status_counts.get('Pending', 0)
     
-    with col1:
-        st.metric("Total Test Cases", f"{total_tests:,}")
-        st.metric("Pass Rate", f"{(passed/total_tests*100):.1f}%", delta=f"{passed} passed", delta_color="normal")
+    pass_rate = (passed/total_tests*100)
+    fail_rate = (failed/total_tests*100)
+    blocked_rate = (blocked/total_tests*100)
+    pending_rate = (pending/total_tests*100)
+    issues_total = failed + blocked
+    issues_rate = (issues_total/total_tests*100)
     
-    with col2:
-        st.metric("Total Offers", f"{total_offers:,}")
-        st.metric("Fail Rate", f"{(failed/total_tests*100):.1f}%", delta=f"-{failed} failed", delta_color="inverse")
+    # Custom HTML metrics
+    st.markdown("""
+    <style>
+    .metric-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 12px;
+        padding: 20px;
+        flex: 1;
+        border: 1px solid #475569;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .metric-label {
+        color: #94a3b8;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .metric-value {
+        color: #f1f5f9;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .metric-delta {
+        font-size: 14px;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    .delta-positive {
+        background-color: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }
+    .delta-negative {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }
+    .delta-neutral {
+        background-color: rgba(251, 146, 60, 0.2);
+        color: #fb923c;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
-    with col3:
-        st.metric("Total Testers", f"{total_testers:,}")
-        st.metric("Blocked Rate", f"{(blocked/total_tests*100):.1f}%", delta=f"{blocked} blocked", delta_color="off")
+    # First row of metrics
+    st.markdown(f"""
+    <div class="metric-row">
+        <div class="metric-card">
+            <div class="metric-label">Total Test Cases</div>
+            <div class="metric-value">{total_tests:,}</div>
+            <div class="metric-delta delta-positive">↑ {passed} passed ({pass_rate:.1f}%)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total Offers</div>
+            <div class="metric-value">{total_offers:,}</div>
+            <div class="metric-delta delta-negative">↓ {failed} failed ({fail_rate:.1f}%)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total Testers</div>
+            <div class="metric-value">{total_testers:,}</div>
+            <div class="metric-delta delta-neutral">⚠ {blocked} blocked ({blocked_rate:.1f}%)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Passed Tests</div>
+            <div class="metric-value">{passed:,}</div>
+            <div class="metric-delta delta-positive">✓ {pass_rate:.1f}%</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Failed Tests</div>
+            <div class="metric-value">{failed:,}</div>
+            <div class="metric-delta delta-negative">✗ {fail_rate:.1f}%</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with col4:
-        st.metric("Passed", f"{passed:,}", delta=f"{(passed/total_tests*100):.1f}%", delta_color="normal")
-        st.metric("Pending Rate", f"{(pending/total_tests*100):.1f}%", delta=f"{pending} pending", delta_color="off")
-    
-    with col5:
-        st.metric("Failed", f"{failed:,}", delta=f"-{(failed/total_tests*100):.1f}%", delta_color="inverse")
-        issues_total = failed + blocked
-        st.metric("Total Issues", f"{issues_total:,}", delta=f"-{(issues_total/total_tests*100):.1f}%", delta_color="inverse")
+    # Second row of metrics
+    st.markdown(f"""
+    <div class="metric-row">
+        <div class="metric-card">
+            <div class="metric-label">Pass Rate</div>
+            <div class="metric-value">{pass_rate:.1f}%</div>
+            <div class="metric-delta delta-positive">↑ {passed} passed</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Fail Rate</div>
+            <div class="metric-value">{fail_rate:.1f}%</div>
+            <div class="metric-delta delta-negative">↓ {failed} failed</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Blocked Rate</div>
+            <div class="metric-value">{blocked_rate:.1f}%</div>
+            <div class="metric-delta delta-neutral">⚠ {blocked} blocked</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Pending Rate</div>
+            <div class="metric-value">{pending_rate:.1f}%</div>
+            <div class="metric-delta delta-neutral">⏳ {pending} pending</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total Issues</div>
+            <div class="metric-value">{issues_total:,}</div>
+            <div class="metric-delta delta-negative">↓ {issues_rate:.1f}%</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -1158,41 +1227,72 @@ def main():
             df = st.session_state.data
             st.success(f"✅ Data loaded successfully!")
             
-            # Quick overview with better styling
+            # Quick overview with custom HTML cards
             st.subheader("📊 Quick Overview")
             
-            # Add custom CSS for home page metrics
-            st.markdown("""
+            total_tests = len(df)
+            total_offers = df['Offer ID'].nunique()
+            total_testers = df['Tester Name'].nunique()
+            pass_rate = (df['Status'] == 'Pass').sum() / len(df) * 100
+            
+            st.markdown(f"""
             <style>
-            div[data-testid="metric-container"] {
-                background-color: rgba(39, 51, 74, 0.8) !important;
-                border: 1px solid #4a5568 !important;
-                padding: 1em !important;
-                border-radius: 10px !important;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-            }
-            div[data-testid="metric-container"] label {
-                color: #e2e8f0 !important;
-            }
-            div[data-testid="metric-container"] [data-testid="metric-value"] {
-                color: white !important;
-                font-size: 1.5rem !important;
-                font-weight: bold !important;
-            }
+            .overview-container {{
+                display: flex;
+                gap: 20px;
+                margin: 20px 0;
+            }}
+            .overview-card {{
+                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                border-radius: 12px;
+                padding: 25px;
+                flex: 1;
+                text-align: center;
+                border: 1px solid #475569;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                transition: transform 0.2s;
+            }}
+            .overview-card:hover {{
+                transform: translateY(-5px);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            }}
+            .overview-label {{
+                color: #94a3b8;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            .overview-value {{
+                color: #f1f5f9;
+                font-size: 32px;
+                font-weight: 700;
+            }}
+            .pass-rate {{
+                background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+            }}
             </style>
+            
+            <div class="overview-container">
+                <div class="overview-card">
+                    <div class="overview-label">Total Tests</div>
+                    <div class="overview-value">{total_tests:,}</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-label">Total Offers</div>
+                    <div class="overview-value">{total_offers:,}</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-label">Total Testers</div>
+                    <div class="overview-value">{total_testers:,}</div>
+                </div>
+                <div class="overview-card pass-rate">
+                    <div class="overview-label">Pass Rate</div>
+                    <div class="overview-value">{pass_rate:.1f}%</div>
+                </div>
+            </div>
             """, unsafe_allow_html=True)
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Total Tests", f"{len(df):,}")
-            with col2:
-                st.metric("Total Offers", f"{df['Offer ID'].nunique():,}")
-            with col3:
-                st.metric("Total Testers", f"{df['Tester Name'].nunique():,}")
-            with col4:
-                pass_rate = (df['Status'] == 'Pass').sum() / len(df) * 100
-                st.metric("Pass Rate", f"{pass_rate:.1f}%")
             
             st.markdown("---")
             st.info("👈 Use the sidebar navigation to explore different analytics pages")
