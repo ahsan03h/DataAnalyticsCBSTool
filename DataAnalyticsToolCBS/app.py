@@ -1476,7 +1476,7 @@ def main():
             st.markdown('<span class="status-badge badge-pending">Pending</span> - In Progress', unsafe_allow_html=True)
         
         st.markdown("---")
-        st.caption("Built with ❤️ using Streamlit")
+        st.caption("Created By: Muhammad Ahsan")
         st.caption("Version 1.0.0")
     
     # Main content
@@ -1555,7 +1555,7 @@ def main():
                     <li><strong>📤 Upload Your File:</strong> Hit that upload button in the sidebar (it's waiting for you!)</li>
                     <li><strong>✅ File Check:</strong> Make sure your Excel has all the magic columns we need</li>
                     <li><strong>🎨 Pick Your View:</strong> Statistics, Issues, Comparisons - it's like Netflix for test data!</li>
-                    <li><strong>💾 Export & Share:</strong> Download the juicy details and impress your team</li>
+                    <li><strong>💾 Export & Share:</strong> Download the details and impress your team</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
