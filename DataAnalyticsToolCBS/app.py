@@ -1416,64 +1416,57 @@ def main():
             total_tests = len(df_stats)
             pass_percent = (df_stats['Status'] == 'Pass').sum() / total_tests * 100 if total_tests > 0 else 0
             today_tests = len(df_stats[pd.to_datetime(df_stats['Test Date and Time']).dt.date == datetime.now().date()])
+            active_testers = df_stats['Tester Name'].nunique()
             
-            # Live Stats Section
-            st.markdown("**📊 Live Statistics**")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.caption(f"Total Tests: **{total_tests:,}**")
-                st.caption(f"Today's Tests: **{today_tests}**")
-            with col2:
-                st.caption(f"Pass Rate: **{pass_percent:.1f}%**")
-                st.caption(f"Active Testers: **{df_stats['Tester Name'].nunique()}**")
+            # Live Stats Section with better formatting
+            st.markdown("### 📊 Live Statistics")
+            
+            # Create metrics in a cleaner way
+            st.markdown(f"""
+            **Total Tests:** {total_tests:,}  
+            **Pass Rate:** {pass_percent:.1f}%  
+            **Today's Tests:** {today_tests}  
+            **Active Testers:** {active_testers}
+            """)
             
             # Quick Tip
             st.markdown("---")
+            st.markdown("### 💡 Quick Tip")
             if pass_percent < 80:
-                st.info("💡 **Tip:** Check the Comparison page to find conflicting test results!")
+                st.warning("Check the Comparison page to find conflicting test results!")
             else:
-                st.success("🎯 **Great pass rate!** Review the Summary for insights.")
+                st.success("Great pass rate! Review the Summary for insights.")
             
         else:
             # When no file is uploaded, show helpful info
-            st.markdown("**📋 Required Excel Columns**")
-            required_cols = [
-                "TC # (Test Case Number)",
-                "Offer ID",
-                "Test Scenario", 
-                "Status (Pass/Fail/Blocked/Pending)",
-                "Comments",
-                "Tester Name",
-                "Test Date and Time"
-            ]
-            for col in required_cols:
-                st.caption(f"→ {col}")
+            st.markdown("### 📋 Required Excel Columns")
+            
+            columns_list = """
+            → TC # (Test Case Number)  
+            → Offer ID  
+            → Test Scenario  
+            → Status (Pass/Fail/Blocked/Pending)  
+            → Comments  
+            → Tester Name  
+            → Test Date and Time
+            """
+            st.markdown(columns_list)
             
             st.markdown("---")
-            st.markdown("**🎨 Status Color Guide**")
+            st.markdown("### 🎨 Status Color Guide")
             
-            # Status indicators with colored badges
-            st.markdown("""
-            <style>
-            .status-badge {
-                display: inline-block;
-                padding: 2px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-                margin: 2px 0;
-            }
-            .badge-pass { background-color: #10b981; color: white; }
-            .badge-fail { background-color: #ef4444; color: white; }
-            .badge-blocked { background-color: #f59e0b; color: white; }
-            .badge-pending { background-color: #7c3aed; color: white; }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            st.markdown('<span class="status-badge badge-pass">Pass</span> - Test Successful', unsafe_allow_html=True)
-            st.markdown('<span class="status-badge badge-fail">Fail</span> - Issues Found', unsafe_allow_html=True)
-            st.markdown('<span class="status-badge badge-blocked">Blocked</span> - Cannot Test', unsafe_allow_html=True)
-            st.markdown('<span class="status-badge badge-pending">Pending</span> - In Progress', unsafe_allow_html=True)
+            # Create color boxes using columns
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.markdown("🟢")
+                st.markdown("🔴")
+                st.markdown("🟠")
+                st.markdown("🟣")
+            with col2:
+                st.markdown("**Pass** - Test Successful")
+                st.markdown("**Fail** - Issues Found")
+                st.markdown("**Blocked** - Cannot Test")
+                st.markdown("**Pending** - In Progress")
         
         st.markdown("---")
         st.caption("Created By: Muhammad Ahsan")
