@@ -1417,181 +1417,66 @@ def main():
             pass_percent = (df_stats['Status'] == 'Pass').sum() / total_tests * 100 if total_tests > 0 else 0
             today_tests = len(df_stats[pd.to_datetime(df_stats['Test Date and Time']).dt.date == datetime.now().date()])
             
-            st.markdown(f"""
-            <style>
-            .sidebar-stats {{
-                background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-                border-radius: 15px;
-                padding: 15px;
-                margin: 15px 0;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            }}
-            .stat-row {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin: 8px 0;
-                padding: 5px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }}
-            .stat-label {{
-                color: rgba(255, 255, 255, 0.9);
-                font-size: 12px;
-                font-weight: 500;
-            }}
-            .stat-value {{
-                color: white;
-                font-size: 14px;
-                font-weight: 700;
-            }}
-            .quick-actions {{
-                background: rgba(30, 41, 59, 0.8);
-                border-radius: 12px;
-                padding: 12px;
-                margin: 15px 0;
-            }}
-            .action-title {{
-                color: #e2e8f0;
-                font-size: 13px;
-                font-weight: 600;
-                margin-bottom: 10px;
-                text-align: center;
-            }}
-            .tip-box {{
-                background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-                border-radius: 10px;
-                padding: 12px;
-                margin: 10px 0;
-            }}
-            .tip-text {{
-                color: white;
-                font-size: 12px;
-                line-height: 1.4;
-                text-align: center;
-            }}
-            </style>
+            # Live Stats Section
+            st.markdown("**📊 Live Statistics**")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.caption(f"Total Tests: **{total_tests:,}**")
+                st.caption(f"Today's Tests: **{today_tests}**")
+            with col2:
+                st.caption(f"Pass Rate: **{pass_percent:.1f}%**")
+                st.caption(f"Active Testers: **{df_stats['Tester Name'].nunique()}**")
             
-            <div class="sidebar-stats">
-                <div class="stat-row">
-                    <span class="stat-label">📊 Total Tests</span>
-                    <span class="stat-value">{total_tests:,}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">✅ Pass Rate</span>
-                    <span class="stat-value">{pass_percent:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">📅 Today's Tests</span>
-                    <span class="stat-value">{today_tests}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">👥 Active Testers</span>
-                    <span class="stat-value">{df_stats['Tester Name'].nunique()}</span>
-                </div>
-            </div>
+            # Quick Tip
+            st.markdown("---")
+            if pass_percent < 80:
+                st.info("💡 **Tip:** Check the Comparison page to find conflicting test results!")
+            else:
+                st.success("🎯 **Great pass rate!** Review the Summary for insights.")
             
-            <div class="quick-actions">
-                <div class="action-title">⚡ Quick Tips</div>
-                <div class="tip-box">
-                    <div class="tip-text">
-                        {'💡 Check the Comparison page to find conflicting test results!' if pass_percent < 80 else '🎯 Great pass rate! Review the Summary for insights.'}
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
         else:
             # When no file is uploaded, show helpful info
+            st.markdown("**📋 Required Excel Columns**")
+            required_cols = [
+                "TC # (Test Case Number)",
+                "Offer ID",
+                "Test Scenario", 
+                "Status (Pass/Fail/Blocked/Pending)",
+                "Comments",
+                "Tester Name",
+                "Test Date and Time"
+            ]
+            for col in required_cols:
+                st.caption(f"→ {col}")
+            
+            st.markdown("---")
+            st.markdown("**🎨 Status Color Guide**")
+            
+            # Status indicators with colored badges
             st.markdown("""
             <style>
-            .help-panel {{
-                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-                border-radius: 15px;
-                padding: 20px;
-                margin: 15px 0;
-            }}
-            .help-title {{
-                color: #f1f5f9;
-                font-size: 14px;
-                font-weight: 700;
-                margin-bottom: 15px;
-                text-align: center;
-            }}
-            .help-item {{
-                color: #cbd5e1;
+            .status-badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 4px;
                 font-size: 12px;
-                margin: 8px 0;
-                padding-left: 20px;
-                position: relative;
-            }}
-            .help-item:before {{
-                content: "→";
-                position: absolute;
-                left: 0;
-                color: #7c3aed;
-            }}
-            .status-legend {{
-                background: rgba(30, 41, 59, 0.8);
-                border-radius: 12px;
-                padding: 15px;
-                margin: 15px 0;
-            }}
-            .legend-title {{
-                color: #e2e8f0;
-                font-size: 13px;
                 font-weight: 600;
-                margin-bottom: 10px;
-                text-align: center;
-            }}
-            .legend-item {{
-                display: flex;
-                align-items: center;
-                margin: 8px 0;
-            }}
-            .legend-color {{
-                width: 20px;
-                height: 20px;
-                border-radius: 5px;
-                margin-right: 10px;
-            }}
-            .legend-text {{
-                color: #cbd5e1;
-                font-size: 12px;
-            }}
+                margin: 2px 0;
+            }
+            .badge-pass { background-color: #10b981; color: white; }
+            .badge-fail { background-color: #ef4444; color: white; }
+            .badge-blocked { background-color: #f59e0b; color: white; }
+            .badge-pending { background-color: #7c3aed; color: white; }
             </style>
-            
-            <div class="help-panel">
-                <div class="help-title">📋 Required Excel Columns</div>
-                <div class="help-item">TC # (Test Case Number)</div>
-                <div class="help-item">Offer ID</div>
-                <div class="help-item">Test Scenario</div>
-                <div class="help-item">Status (Pass/Fail/Blocked/Pending)</div>
-                <div class="help-item">Comments</div>
-                <div class="help-item">Tester Name</div>
-                <div class="help-item">Test Date and Time</div>
-            </div>
-            
-            <div class="status-legend">
-                <div class="legend-title">🎨 Status Color Guide</div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #10b981;"></div>
-                    <div class="legend-text">Pass - Test Successful</div>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #ef4444;"></div>
-                    <div class="legend-text">Fail - Issues Found</div>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #f59e0b;"></div>
-                    <div class="legend-text">Blocked - Cannot Test</div>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #7c3aed;"></div>
-                    <div class="legend-text">Pending - In Progress</div>
-                </div>
-            </div>
             """, unsafe_allow_html=True)
+            
+            st.markdown('<span class="status-badge badge-pass">Pass</span> - Test Successful', unsafe_allow_html=True)
+            st.markdown('<span class="status-badge badge-fail">Fail</span> - Issues Found', unsafe_allow_html=True)
+            st.markdown('<span class="status-badge badge-blocked">Blocked</span> - Cannot Test', unsafe_allow_html=True)
+            st.markdown('<span class="status-badge badge-pending">Pending</span> - In Progress', unsafe_allow_html=True)
         
-        st.caption("Created By: Muhammad Ahsan")
+        st.markdown("---")
+        st.caption("Built with ❤️ using Streamlit")
         st.caption("Version 1.0.0")
     
     # Main content
@@ -1670,7 +1555,7 @@ def main():
                     <li><strong>📤 Upload Your File:</strong> Hit that upload button in the sidebar (it's waiting for you!)</li>
                     <li><strong>✅ File Check:</strong> Make sure your Excel has all the magic columns we need</li>
                     <li><strong>🎨 Pick Your View:</strong> Statistics, Issues, Comparisons - it's like Netflix for test data!</li>
-                    <li><strong>💾 Export & Share:</strong> Download the details and impress your team</li>
+                    <li><strong>💾 Export & Share:</strong> Download the juicy details and impress your team</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
