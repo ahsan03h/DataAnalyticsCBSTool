@@ -987,43 +987,133 @@ def display_summary_page(df):
                 'top_failed_scenarios': failed_scenarios
             }
         
+        # Custom HTML for offer analysis cards
+        st.markdown("""
+        <style>
+        .offer-analysis-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #475569;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .offer-header {
+            color: #f1f5f9;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #475569;
+        }
+        .offer-metrics {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .offer-metric {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            padding: 10px 15px;
+            flex: 1;
+            text-align: center;
+        }
+        .offer-metric-label {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .offer-metric-value {
+            color: #f1f5f9;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .section-title {
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 15px 0 10px 0;
+        }
+        .issue-item {
+            color: #e2e8f0;
+            font-size: 13px;
+            margin: 5px 0;
+            padding-left: 15px;
+            position: relative;
+        }
+        .issue-item:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #7c3aed;
+        }
+        .recommendation-item {
+            color: #4ade80;
+            font-size: 13px;
+            margin: 5px 0;
+            padding-left: 15px;
+            position: relative;
+        }
+        .recommendation-item:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # Display analysis for each offer
         for offer_id, analysis in sorted(offer_issues.items(), 
                                         key=lambda x: x[1]['total_issues'], 
                                         reverse=True)[:10]:  # Top 10 problematic offers
             
             with st.expander(f"Offer {offer_id} - {analysis['total_issues']} issues"):
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("Total Issues", analysis['total_issues'])
-                with col2:
-                    st.metric("Failed", analysis['fail_count'])
-                with col3:
-                    st.metric("Blocked", analysis['blocked_count'])
+                # Create custom HTML content
+                metrics_html = f"""
+                <div class="offer-metrics">
+                    <div class="offer-metric">
+                        <div class="offer-metric-label">Total Issues</div>
+                        <div class="offer-metric-value">{analysis['total_issues']}</div>
+                    </div>
+                    <div class="offer-metric">
+                        <div class="offer-metric-label">Failed</div>
+                        <div class="offer-metric-value" style="color: #f87171;">{analysis['fail_count']}</div>
+                    </div>
+                    <div class="offer-metric">
+                        <div class="offer-metric-label">Blocked</div>
+                        <div class="offer-metric-value" style="color: #fb923c;">{analysis['blocked_count']}</div>
+                    </div>
+                </div>
+                """
+                st.markdown(metrics_html, unsafe_allow_html=True)
                 
                 if analysis['patterns']:
-                    st.markdown("**🔍 Common Issue Categories:**")
+                    patterns_html = "<div class='section-title'>🔍 Common Issue Categories:</div>"
                     for category, count in analysis['patterns'].most_common(3):
-                        st.write(f"• {category.capitalize()}: {count} occurrences")
+                        patterns_html += f"<div class='issue-item'>{category.capitalize()}: {count} occurrences</div>"
+                    st.markdown(patterns_html, unsafe_allow_html=True)
                 
                 if not analysis['top_failed_scenarios'].empty:
-                    st.markdown("**📋 Most Problematic Test Scenarios:**")
+                    scenarios_html = "<div class='section-title'>📋 Most Problematic Test Scenarios:</div>"
                     for scenario, count in analysis['top_failed_scenarios'].items():
-                        st.write(f"• {scenario[:60]}... ({count} failures)")
+                        scenarios_html += f"<div class='issue-item'>{scenario[:60]}... ({count} failures)</div>"
+                    st.markdown(scenarios_html, unsafe_allow_html=True)
                 
                 # Provide recommendations
-                st.markdown("**💡 Recommendations:**")
+                recommendations_html = "<div class='section-title'>💡 Recommendations:</div>"
                 if 'balance' in analysis['patterns']:
-                    st.write("• Review balance deduction logic and tariff calculations")
+                    recommendations_html += "<div class='recommendation-item'>Review balance deduction logic and tariff calculations</div>"
                 if 'api' in analysis['patterns']:
-                    st.write("• Check API endpoints and response handling")
+                    recommendations_html += "<div class='recommendation-item'>Check API endpoints and response handling</div>"
                 if 'gui' in analysis['patterns']:
-                    st.write("• Verify UI components and display logic")
+                    recommendations_html += "<div class='recommendation-item'>Verify UI components and display logic</div>"
                 if 'network' in analysis['patterns']:
-                    st.write("• Investigate network connectivity and timeout issues")
+                    recommendations_html += "<div class='recommendation-item'>Investigate network connectivity and timeout issues</div>"
                 if 'validation' in analysis['patterns']:
-                    st.write("• Review validation rules and data integrity checks")
+                    recommendations_html += "<div class='recommendation-item'>Review validation rules and data integrity checks</div>"
+                st.markdown(recommendations_html, unsafe_allow_html=True)
     else:
         st.success("🎉 No issues found across all offers!")
     
@@ -1501,7 +1591,7 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         
-        st.caption("Built with ❤️ using Streamlit")
+        st.caption("Created By: Muhammad Ahsan")
         st.caption("Version 1.0.0")
     
     # Main content
@@ -1580,7 +1670,7 @@ def main():
                     <li><strong>📤 Upload Your File:</strong> Hit that upload button in the sidebar (it's waiting for you!)</li>
                     <li><strong>✅ File Check:</strong> Make sure your Excel has all the magic columns we need</li>
                     <li><strong>🎨 Pick Your View:</strong> Statistics, Issues, Comparisons - it's like Netflix for test data!</li>
-                    <li><strong>💾 Export & Share:</strong> Download the juicy details and impress your team</li>
+                    <li><strong>💾 Export & Share:</strong> Download the details and impress your team</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
