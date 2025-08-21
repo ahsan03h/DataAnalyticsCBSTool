@@ -5,10 +5,9 @@ import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
 from io import BytesIO
-import openpyxl  # noqa: F401 (engine used by pandas ExcelWriter)
+import openpyxl  # noqa: F401
 from collections import Counter
-import re
-import json
+import sqlite3
 import os
 
 # ------------------------ Page configuration ------------------------
@@ -31,40 +30,138 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ------------------------ Persistence helpers ------------------------
-STORE_PATH = "bug_tracker_store.json"
+# ------------------------ SQLite persistence ------------------------
+DB_PATH = "bugs.db"
 
-def _load_store():
-    if os.path.exists(STORE_PATH):
-        try:
-            with open(STORE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {"next_defect_id": 1001, "bugs": []}
-    return {"next_defect_id": 1001, "bugs": []}
+@st.cache_resource
+def get_conn(path=DB_PATH):
+    conn = sqlite3.connect(path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    with conn:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bugs(
+                defect_id TEXT PRIMARY KEY,
+                offer_id TEXT NOT NULL,
+                issue TEXT NOT NULL,
+                tested_by TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('Pending','Resolved')),
+                test_date TEXT NOT NULL,
+                environment TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                resolved_at TEXT,
+                resolution_notes TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS meta(
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        # initialize next_defect_id if missing
+        cur = conn.execute("SELECT value FROM meta WHERE key='next_defect_id'")
+        row = cur.fetchone()
+        if row is None:
+            conn.execute("INSERT INTO meta(key,value) VALUES('next_defect_id','1001')")
+        # helpful indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_bugs_status ON bugs(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_bugs_severity ON bugs(severity)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_bugs_offer ON bugs(offer_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_bugs_tester ON bugs(tested_by)")
+    return conn
 
-def _save_store(bugs, next_id):
-    with open(STORE_PATH, "w", encoding="utf-8") as f:
-        json.dump({"next_defect_id": next_id, "bugs": bugs}, f, ensure_ascii=False, indent=2)
+def get_next_defect_id(conn):
+    row = conn.execute("SELECT value FROM meta WHERE key='next_defect_id'").fetchone()
+    return int(row["value"]) if row else 1001
+
+def bump_next_defect_id(conn):
+    with conn:
+        conn.execute("""
+            UPDATE meta
+            SET value = CAST(value AS INTEGER) + 1
+            WHERE key='next_defect_id'
+        """)
+
+def add_bug(conn, bug):
+    with conn:
+        conn.execute("""
+            INSERT INTO bugs(defect_id, offer_id, issue, tested_by, severity, status,
+                             test_date, environment, created_at, resolved_at, resolution_notes)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            bug['defect_id'], bug['offer_id'], bug['issue'], bug['tested_by'], bug['severity'],
+            bug['status'], bug['test_date'], bug['environment'], bug['created_at'],
+            bug['resolved_at'], bug['resolution_notes']
+        ))
+
+def delete_bug(conn, defect_id):
+    with conn:
+        conn.execute("DELETE FROM bugs WHERE defect_id=?", (defect_id,))
+
+def clear_resolved(conn):
+    with conn:
+        conn.execute("DELETE FROM bugs WHERE status='Resolved'")
+
+def set_status(conn, defect_id, status, resolved_at=None, notes=None):
+    with conn:
+        conn.execute("""
+            UPDATE bugs
+            SET status=?, resolved_at=?, resolution_notes=COALESCE(?, resolution_notes)
+            WHERE defect_id=?
+        """, (status, resolved_at, notes, defect_id))
+
+def save_notes(conn, defect_id, notes):
+    with conn:
+        conn.execute("UPDATE bugs SET resolution_notes=? WHERE defect_id=?", (notes, defect_id))
+
+def get_bug(conn, defect_id):
+    row = conn.execute("SELECT * FROM bugs WHERE defect_id=?", (defect_id,)).fetchone()
+    return dict(row) if row else None
+
+def list_bugs(conn, status=None, severity=None, search=None):
+    sql = "SELECT defect_id, offer_id FROM bugs"
+    where = []
+    params = []
+    if status and status != "All":
+        where.append("status=?")
+        params.append(status)
+    if severity and severity != "All":
+        where.append("severity=?")
+        params.append(severity)
+    if search:
+        where.append("(LOWER(defect_id) LIKE ? OR LOWER(offer_id) LIKE ? OR LOWER(tested_by) LIKE ?)")
+        like = f"%{search.lower()}%"
+        params += [like, like, like]
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY created_at DESC"
+    rows = conn.execute(sql, params).fetchall()
+    return pd.DataFrame([dict(r) for r in rows])
+
+def get_bugs_minimal(conn):
+    return pd.read_sql_query(
+        "SELECT defect_id, offer_id, issue, tested_by, status "
+        "FROM bugs ORDER BY created_at DESC",
+        conn
+    )
+
+def get_bug_counts(conn):
+    total = conn.execute("SELECT COUNT(*) AS c FROM bugs").fetchone()["c"]
+    pending = conn.execute("SELECT COUNT(*) AS c FROM bugs WHERE status='Pending'").fetchone()["c"]
+    resolved = conn.execute("SELECT COUNT(*) AS c FROM bugs WHERE status='Resolved'").fetchone()["c"]
+    return total, pending, resolved
+
+def df_all_bugs(conn):
+    return pd.read_sql_query("SELECT * FROM bugs ORDER BY created_at DESC", conn)
 
 # ------------------------ Session state ------------------------
 if 'data' not in st.session_state:
     st.session_state.data = None
 if 'file_uploaded' not in st.session_state:
     st.session_state.file_uploaded = False
-if 'bug_tracker' not in st.session_state:
-    st.session_state.bug_tracker = []
-if 'next_defect_id' not in st.session_state:
-    st.session_state.next_defect_id = 1001
-# For details panel in bug list
-if 'view_bug_id' not in st.session_state:
-    st.session_state.view_bug_id = None
-# Load persistence once
-if 'persistence_loaded' not in st.session_state:
-    _store = _load_store()
-    st.session_state.bug_tracker = _store.get("bugs", [])
-    st.session_state.next_defect_id = _store.get("next_defect_id", 1001)
-    st.session_state.persistence_loaded = True
 
 # ------------------------ Data loading & validation ------------------------
 def validate_excel_structure(df):
@@ -84,7 +181,6 @@ def load_data(file):
             st.error(f"❌ Invalid file structure. Missing columns: {', '.join(missing)}")
             st.info("Required: TC #, Stream, Domain, Offer ID, Test Scenario, Expected Result, Actual Result, Status, Comments, Tester Name, Test MSISDN, Test Date and Time")
             return None
-        # Coerce dates
         df['Test Date and Time'] = pd.to_datetime(df['Test Date and Time'], errors='coerce')
         return df
     except Exception as e:
@@ -160,7 +256,6 @@ def display_statistics_page(df):
     issues_total = failed + blocked
     issues_rate = (issues_total/total_tests*100) if total_tests else 0
 
-    # Metrics
     st.markdown("""
     <style>
     .metric-row { display: flex; gap: 20px; margin-bottom: 30px; }
@@ -330,7 +425,7 @@ def display_comparison_page(df):
         st.markdown(f"""
         <style>
         .comparison-metrics {{ display: flex; gap: 20px; margin: 20px 0 30px 0; }}
-        .comparison-card {{ background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 25px; flex: 1; text-align: center; border: 1px solid #475569; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }}
+        .comparison-card {{ background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 12px; padding: 25px; flex: 1; text-align: center; border: 1px solid #475569; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
         .comparison-label {{ color: #94a3b8; font-size: 14px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }}
         .comparison-value {{ color: #f1f5f9; font-size: 36px; font-weight: 700; }}
         .conflicts-card {{ background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); }}
@@ -341,33 +436,6 @@ def display_comparison_page(df):
             <div class="comparison-card"><div class="comparison-label">Affected Test Cases</div><div class="comparison-value">{affected_test_cases}</div></div>
         </div>
         """, unsafe_allow_html=True)
-
-        st.markdown("---")
-        st.subheader("🔍 Filter Conflicts")
-        col1, col2 = st.columns(2)
-        with col1:
-            selected_offer = st.selectbox("Filter by Offer ID", options=['All'] + sorted(conflicts_df['Offer ID'].unique().tolist()))
-        with col2:
-            testers = sorted(list(set(conflicts_df['Tester 1'].unique().tolist() + conflicts_df['Tester 2'].unique().tolist())))
-            selected_tester = st.selectbox("Filter by Tester", options=['All'] + testers)
-
-        filtered = conflicts_df.copy()
-        if selected_offer != 'All':
-            filtered = filtered[filtered['Offer ID'] == selected_offer]
-        if selected_tester != 'All':
-            filtered = filtered[(filtered['Tester 1'] == selected_tester) | (filtered['Tester 2'] == selected_tester)]
-
-        st.subheader("⚠️ Conflicting Test Results")
-        for idx, row in filtered.iterrows():
-            with st.expander(f"Conflict #{idx+1}: TC {row['TC #']} - Offer {row['Offer ID']}"):
-                st.markdown(f"**Test Scenario:** {row['Test Scenario']}")
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.write(f"**{row['Tester 1']}** → {row['Status 1']}")
-                    st.write(f"Result: {row['Result 1']}")
-                with c2:
-                    st.write(f"**{row['Tester 2']}** → {row['Status 2']}")
-                    st.write(f"Result: {row['Result 2']}")
 
         st.markdown("---")
         st.subheader("📈 Conflict Analysis")
@@ -524,13 +592,12 @@ def display_summary_page(df):
         st.plotly_chart(fig_domain, use_container_width=True)
 
 def display_bug_tracker():
+    conn = get_conn()
     st.title("🔧 Live Bug Tracker")
     st.markdown("Track and manage bugs in real-time across your team")
 
     # Quick stats
-    total_bugs = len(st.session_state.bug_tracker)
-    pending_bugs = sum(b['status'] == 'Pending' for b in st.session_state.bug_tracker)
-    resolved_bugs = sum(b['status'] == 'Resolved' for b in st.session_state.bug_tracker)
+    total_bugs, pending_bugs, resolved_bugs = get_bug_counts(conn)
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Bugs", total_bugs)
     c2.metric("Pending", pending_bugs)
@@ -541,10 +608,11 @@ def display_bug_tracker():
     # ---------------- Add New Bug ----------------
     with tab1:
         st.subheader("Add New Bug")
+        auto_id = f"BUG-{get_next_defect_id(conn)}"
         with st.form("add_bug_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
-                defect_id = st.text_input("Defect ID*", value=f"BUG-{st.session_state.next_defect_id}")
+                defect_id = st.text_input("Defect ID*", value=auto_id)
                 offer_id = st.text_input("Offer ID*", placeholder="e.g., 40104")
             with col2:
                 tested_by = st.text_input("Tested By*", placeholder="Enter tester name")
@@ -559,7 +627,8 @@ def display_bug_tracker():
 
             if submitted:
                 if defect_id and offer_id and tested_by and issue_description:
-                    if any(b['defect_id'] == defect_id for b in st.session_state.bug_tracker):
+                    exists = get_bug(conn, defect_id)
+                    if exists:
                         st.error(f"❌ Defect ID '{defect_id}' already exists.")
                     else:
                         new_bug = {
@@ -575,125 +644,82 @@ def display_bug_tracker():
                             'resolved_at': None,
                             'resolution_notes': None
                         }
-                        st.session_state.bug_tracker.append(new_bug)
-                        if defect_id == f"BUG-{st.session_state.next_defect_id}":
-                            st.session_state.next_defect_id += 1
-                        _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
+                        add_bug(conn, new_bug)
+                        if defect_id == auto_id:
+                            bump_next_defect_id(conn)
                         st.success(f"✅ Bug {defect_id} added.")
                         st.balloons()
+                        st.rerun()
                 else:
                     st.error("❌ Please fill all required fields.")
 
-    # ---------------- View All Bugs (compact list) ----------------
+    # ---------------- View All Bugs (MINIMAL) ----------------
     with tab2:
-        st.subheader("Bug List (compact)")
+        st.subheader("Bug List (minimal)")
+        df_table = get_bugs_minimal(conn)
 
-        # Filters
-        colf1, colf2, colf3 = st.columns(3)
-        with colf1:
-            status_filter = st.selectbox("Status", ["All", "Pending", "Resolved"])
-        with colf2:
-            severity_filter = st.selectbox("Severity", ["All", "Critical", "High", "Medium", "Low"])
-        with colf3:
-            search_term = st.text_input("Search", placeholder="Bug ID / Offer ID / Tester")
-
-        # Apply filters
-        bugs = st.session_state.bug_tracker
-        if status_filter != "All":
-            bugs = [b for b in bugs if b['status'] == status_filter]
-        if severity_filter != "All":
-            bugs = [b for b in bugs if b['severity'] == severity_filter]
-        if search_term:
-            q = search_term.lower()
-            bugs = [b for b in bugs if q in b['defect_id'].lower() or q in b['offer_id'].lower() or q in b['tested_by'].lower()]
-
-        if bugs:
-            # Minimal table (Bug ID + Offer ID only)
-            mini_df = pd.DataFrame([{"Bug ID": b['defect_id'], "Offer ID": b['offer_id']} for b in bugs])
-            st.dataframe(mini_df, use_container_width=True, height=300)
-
-            # Action row
-            colA, colB, colC, colD = st.columns([2, 1, 1, 1])
-            with colA:
-                selected_id = st.selectbox("Select a Bug", options=[row["Bug ID"] for _, row in mini_df.iterrows()])
-            with colB:
-                if st.button("🔍 View Details", use_container_width=True):
-                    st.session_state.view_bug_id = selected_id
-            with colC:
-                if st.button("🗑️ Delete Bug", use_container_width=True):
-                    st.session_state.bug_tracker = [b for b in st.session_state.bug_tracker if b['defect_id'] != selected_id]
-                    _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                    st.success(f"Deleted {selected_id}")
-                    st.session_state.view_bug_id = None
-                    st.rerun()
-            with colD:
-                if st.button("🧹 Clear All Resolved", use_container_width=True):
-                    st.session_state.bug_tracker = [b for b in st.session_state.bug_tracker if b['status'] != 'Resolved']
-                    _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                    st.success("Cleared all resolved bugs.")
-                    st.rerun()
-
-            # Details drawer
-            if st.session_state.view_bug_id:
-                bug = next((b for b in st.session_state.bug_tracker if b['defect_id'] == st.session_state.view_bug_id), None)
-                if bug:
-                    st.markdown("---")
-                    st.subheader(f"Details: {bug['defect_id']}")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.write(f"**Offer ID:** {bug['offer_id']}")
-                        st.write(f"**Severity:** {bug['severity']}")
-                        st.write(f"**Status:** {bug['status']}")
-                        st.write(f"**Tested By:** {bug['tested_by']}")
-                    with c2:
-                        st.write(f"**Test Date:** {bug['test_date']}")
-                        st.write(f"**Environment:** {bug['environment']}")
-                        st.write(f"**Created:** {bug['created_at']}")
-                        st.write(f"**Resolved:** {bug['resolved_at'] or '-'}")
-                    st.write("**Issue:**")
-                    st.code(bug['issue'] or "", language="markdown")
-
-                    notes = st.text_area("Resolution notes", value=bug.get('resolution_notes') or "", key=f"notes_{bug['defect_id']}")
-                    cU1, cU2, cU3 = st.columns(3)
-                    with cU1:
-                        if bug['status'] == 'Pending':
-                            if st.button("✅ Mark Resolved", key=f"resolve_{bug['defect_id']}", use_container_width=True):
-                                bug['status'] = 'Resolved'
-                                bug['resolved_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                bug['resolution_notes'] = notes or "Resolved"
-                                _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                                st.success("Bug marked as resolved.")
-                                st.rerun()
-                        else:
-                            if st.button("↩️ Reopen", key=f"reopen_{bug['defect_id']}", use_container_width=True):
-                                bug['status'] = 'Pending'
-                                bug['resolved_at'] = None
-                                bug['resolution_notes'] = None
-                                _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                                st.warning("Bug reopened.")
-                                st.rerun()
-                    with cU2:
-                        if st.button("💾 Save Notes", key=f"savenotes_{bug['defect_id']}", use_container_width=True):
-                            bug['resolution_notes'] = notes
-                            _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                            st.success("Notes saved.")
-                    with cU3:
-                        if st.button("🗑️ Delete This Bug", key=f"delete_{bug['defect_id']}", use_container_width=True):
-                            st.session_state.bug_tracker = [b for b in st.session_state.bug_tracker if b['defect_id'] != bug['defect_id']]
-                            _save_store(st.session_state.bug_tracker, st.session_state.next_defect_id)
-                            st.success(f"Deleted {bug['defect_id']}")
-                            st.session_state.view_bug_id = None
-                            st.rerun()
-                else:
-                    st.info("Selected bug not found.")
+        if df_table.empty:
+            st.info("No bugs yet.")
         else:
-            st.info("No bugs match your filters. Add one in the first tab.")
+            # add a checkbox column for deletion
+            df_table["delete"] = False
+
+            edited = st.data_editor(
+                df_table,
+                use_container_width=True,
+                hide_index=True,
+                num_rows="fixed",  # prevent adding rows here
+                column_config={
+                    "defect_id": st.column_config.TextColumn("Bug ID", width="small"),
+                    "offer_id": st.column_config.TextColumn("Offer ID", width="small"),
+                    "issue": st.column_config.TextColumn("Issue", width="medium"),
+                    "tested_by": st.column_config.TextColumn("Tested By", width="small"),
+                    "status": st.column_config.SelectboxColumn(
+                        "Status", options=["Pending", "Resolved"]
+                    ),
+                    "delete": st.column_config.CheckboxColumn(
+                        "Delete", help="Select to delete this bug"
+                    ),
+                },
+                disabled=["defect_id", "offer_id", "issue", "tested_by"],  # only status & delete editable
+            )
+
+            col_save, col_del = st.columns(2)
+            with col_save:
+                if st.button("💾 Save Changes", use_container_width=True):
+                    # detect status changes
+                    orig = df_table.set_index("defect_id")["status"]
+                    new = edited.set_index("defect_id")["status"]
+                    changed_ids = [bid for bid in orig.index if orig[bid] != new[bid]]
+
+                    if changed_ids:
+                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        for bid in changed_ids:
+                            if new[bid] == "Resolved":
+                                set_status(conn, bid, "Resolved", resolved_at=now)
+                            else:
+                                set_status(conn, bid, "Pending", resolved_at=None)
+                        st.success(f"Saved {len(changed_ids)} change(s).")
+                        st.rerun()
+                    else:
+                        st.info("No changes to save.")
+
+            with col_del:
+                if st.button("🗑️ Delete Selected", use_container_width=True):
+                    to_delete = edited.loc[edited["delete"] == True, "defect_id"].tolist()
+                    if to_delete:
+                        for bid in to_delete:
+                            delete_bug(conn, bid)
+                        st.success(f"Deleted {len(to_delete)} bug(s).")
+                        st.rerun()
+                    else:
+                        st.info("No bugs selected.")
 
     # ---------------- Analytics ----------------
     with tab3:
         st.subheader("Bug Analytics")
-        if st.session_state.bug_tracker:
-            df_bugs = pd.DataFrame(st.session_state.bug_tracker)
+        df_bugs = df_all_bugs(conn)
+        if not df_bugs.empty:
             col1, col2 = st.columns(2)
             with col1:
                 status_counts = df_bugs['status'].value_counts()
@@ -829,7 +855,7 @@ def main():
                 st.markdown("**Pending** - In Progress")
         st.markdown("---")
         st.caption("Built with ❤️ using Streamlit")
-        st.caption("Version 1.1.0 (with persistence)")
+        st.caption("Version 1.3.0 (SQLite • Minimal Bug List)")
 
     # Main content routing
     if page == "🏠 Home":
