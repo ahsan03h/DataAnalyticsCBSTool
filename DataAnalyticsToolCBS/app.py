@@ -8,6 +8,8 @@ from io import BytesIO
 import openpyxl
 from collections import Counter
 import re
+import json
+import os
 
 # Page configuration
 st.set_page_config(
@@ -82,6 +84,9 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Bug tracker data persistence using session state only (for Streamlit Cloud compatibility)
+# Note: For production, consider using a database or cloud storage
 
 # Initialize session state
 if 'data' not in st.session_state:
@@ -1306,7 +1311,11 @@ def display_bug_tracker():
             col1, col2 = st.columns(2)
             
             with col1:
-                defect_id = st.text_input("Defect ID", value=f"BUG-{st.session_state.next_defect_id}", disabled=True)
+                # Make Defect ID editable
+                defect_id = st.text_input("Defect ID*", 
+                                         value=f"BUG-{st.session_state.next_defect_id}", 
+                                         placeholder="Enter unique defect ID",
+                                         help="You can use the auto-generated ID or enter your own")
                 offer_id = st.text_input("Offer ID*", placeholder="e.g., 40104")
             
             with col2:
@@ -1324,23 +1333,206 @@ def display_bug_tracker():
             submitted = st.form_submit_button("🚀 Add Bug", use_container_width=True)
             
             if submitted:
-                if offer_id and tested_by and issue_description:
-                    new_bug = {
-                        'defect_id': f"BUG-{st.session_state.next_defect_id}",
-                        'offer_id': offer_id,
-                        'issue': issue_description,
-                        'tested_by': tested_by,
-                        'severity': severity,
-                        'status': 'Pending',
-                        'test_date': str(test_date),
-                        'environment': environment,
-                        'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'resolved_at': None,
-                        'resolution_notes': None
-                    }
-                    st.session_state.bug_tracker.append(new_bug)
-                    st.session_state.next_defect_id += 1
-                    st.success(f"✅ Bug {new_bug['defect_id']} added successfully!")
+                if defect_id and offer_id and tested_by and issue_description:
+                    # Check if defect ID already exists
+                    existing_ids = [b['defect_id'] for b in st.session_state.bug_tracker]
+                    if defect_id in existing_ids:
+                        st.error(f"❌ Defect ID '{defect_id}' already exists! Please use a unique ID.")
+                    else:
+                        new_bug = {
+                            'defect_id': defect_id,
+                            'offer_id': offer_id,
+                            'issue': issue_description,
+                            'tested_by': tested_by,
+                            'severity': severity,
+                            'status': 'Pending',
+                            'test_date': str(test_date),
+                            'environment': environment,
+                            'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'resolved_at': None,
+                            'resolution_notes': None
+                        }
+                        st.session_state.bug_tracker.append(new_bug)
+                        
+                        # Update next ID if auto-generated was used
+                        if defect_id == f"BUG-{st.session_state.next_defect_id}":
+                            st.session_state.next_defect_id += 1
+                        
+                        st.success(f"✅ Bug {new_bug['defect_id']} added successfully!")
+                        st.balloons()
+                else:
+                    st.error("❌ Please fill in all required fields (Defect ID, Offer ID, Tested By, Issue Description)")
+    
+    with tab2:
+        st.subheader("Bug List")
+        
+        # Filter options
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            status_filter = st.selectbox("Filter by Status", ["All", "Pending", "Resolved"])
+        with col2:
+            severity_filter = st.selectbox("Filter by Severity", ["All", "Critical", "High", "Medium", "Low"])
+        with col3:
+            search_term = st.text_input("Search bugs", placeholder="Search by ID, offer, or tester...")
+        
+        # Filter bugs based on selections
+        filtered_bugs = st.session_state.bug_tracker.copy()
+        
+        if status_filter != "All":
+            filtered_bugs = [b for b in filtered_bugs if b['status'] == status_filter]
+        
+        if severity_filter != "All":
+            filtered_bugs = [b for b in filtered_bugs if b['severity'] == severity_filter]
+        
+        if search_term:
+            search_lower = search_term.lower()
+            filtered_bugs = [b for b in filtered_bugs if 
+                           search_lower in b['defect_id'].lower() or 
+                           search_lower in b['offer_id'].lower() or 
+                           search_lower in b['tested_by'].lower() or
+                           search_lower in b['issue'].lower()]
+        
+        if filtered_bugs:
+            # Display bugs as an interactive table
+            st.markdown(f"**Showing {len(filtered_bugs)} bug(s)**")
+            
+            # Create a container for each bug
+            for idx, bug in enumerate(filtered_bugs):
+                original_idx = st.session_state.bug_tracker.index(bug)
+                
+                with st.expander(f"{bug['defect_id']} - Offer {bug['offer_id']} - {bug['severity']} Priority", 
+                               expanded=(bug['status'] == 'Pending')):
+                    
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**🔍 Issue:** {bug['issue']}")
+                        st.markdown(f"**👤 Tested By:** {bug['tested_by']}")
+                        st.markdown(f"**📅 Test Date:** {bug['test_date']}")
+                        st.markdown(f"**🌍 Environment:** {bug['environment']}")
+                    
+                    with col2:
+                        st.markdown(f"**⏰ Created:** {bug['created_at']}")
+                        
+                        # Severity badge
+                        severity_colors = {
+                            "Critical": "🔴",
+                            "High": "🟠",
+                            "Medium": "🟡",
+                            "Low": "🟢"
+                        }
+                        st.markdown(f"**Priority:** {severity_colors.get(bug['severity'], '')} {bug['severity']}")
+                        
+                        if bug['status'] == 'Resolved' and bug['resolved_at']:
+                            st.markdown(f"**✅ Resolved:** {bug['resolved_at']}")
+                            if bug['resolution_notes']:
+                                st.markdown(f"**📝 Resolution:** {bug['resolution_notes']}")
+                    
+                    with col3:
+                        # Status update dropdown
+                        current_status = bug['status']
+                        
+                        if current_status == 'Pending':
+                            st.markdown('<span class="status-pending">⚠️ PENDING</span>', unsafe_allow_html=True)
+                            resolution_notes = st.text_area(f"Resolution notes", key=f"notes_{original_idx}", height=100)
+                            if st.button(f"Mark Resolved", key=f"resolve_{original_idx}"):
+                                st.session_state.bug_tracker[original_idx]['status'] = 'Resolved'
+                                st.session_state.bug_tracker[original_idx]['resolved_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                st.session_state.bug_tracker[original_idx]['resolution_notes'] = resolution_notes if resolution_notes else "Resolved"
+                                st.success("✅ Bug marked as resolved!")
+                                st.rerun()
+                        else:
+                            st.markdown('<span class="status-resolved">✅ RESOLVED</span>', unsafe_allow_html=True)
+                            if st.button(f"Reopen", key=f"reopen_{original_idx}"):
+                                st.session_state.bug_tracker[original_idx]['status'] = 'Pending'
+                                st.session_state.bug_tracker[original_idx]['resolved_at'] = None
+                                st.session_state.bug_tracker[original_idx]['resolution_notes'] = None
+                                st.warning("⚠️ Bug reopened!")
+                                st.rerun()
+            
+            # Export functionality
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📥 Export Bug List to Excel", use_container_width=True):
+                    df_bugs = pd.DataFrame(filtered_bugs)
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_bugs.to_excel(writer, sheet_name='Bug_Tracker', index=False)
+                    output.seek(0)
+                    
+                    st.download_button(
+                        label="💾 Download Excel File",
+                        data=output,
+                        file_name=f"bug_tracker_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+            with col2:
+                if st.button("🗑️ Clear All Resolved Bugs", use_container_width=True):
+                    st.session_state.bug_tracker = [b for b in st.session_state.bug_tracker if b['status'] != 'Resolved']
+                    st.success("Resolved bugs cleared!")
+                    st.rerun()
+        else:
+            st.info("No bugs found matching the selected filters. Add a new bug to get started!")
+    
+    with tab3:
+        st.subheader("Bug Analytics")
+        
+        if st.session_state.bug_tracker:
+            # Create DataFrame for analysis
+            df_bugs = pd.DataFrame(st.session_state.bug_tracker)
+            
+            # Bugs by Status pie chart
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                status_counts = df_bugs['status'].value_counts()
+                fig_status = px.pie(
+                    values=status_counts.values,
+                    names=status_counts.index,
+                    title='Bugs by Status',
+                    color_discrete_map={'Pending': '#ef4444', 'Resolved': '#10b981'},
+                    hole=0.4
+                )
+                st.plotly_chart(fig_status, use_container_width=True)
+            
+            with col2:
+                severity_counts = df_bugs['severity'].value_counts()
+                fig_severity = px.bar(
+                    x=severity_counts.index,
+                    y=severity_counts.values,
+                    title='Bugs by Severity',
+                    color=severity_counts.index,
+                    color_discrete_map={'Critical': '#dc2626', 'High': '#f97316', 
+                                       'Medium': '#eab308', 'Low': '#22c55e'}
+                )
+                st.plotly_chart(fig_severity, use_container_width=True)
+            
+            # Bugs by Offer
+            offer_counts = df_bugs['offer_id'].value_counts().head(10)
+            if not offer_counts.empty:
+                fig_offers = px.bar(
+                    x=offer_counts.values,
+                    y=offer_counts.index,
+                    orientation='h',
+                    title='Top 10 Offers with Most Bugs',
+                    labels={'x': 'Number of Bugs', 'y': 'Offer ID'}
+                )
+                st.plotly_chart(fig_offers, use_container_width=True)
+            
+            # Bugs by Tester
+            tester_counts = df_bugs['tested_by'].value_counts()
+            if not tester_counts.empty:
+                fig_testers = px.bar(
+                    x=tester_counts.index,
+                    y=tester_counts.values,
+                    title='Bugs Reported by Tester',
+                    labels={'x': 'Tester', 'y': 'Number of Bugs'}
+                )
+                st.plotly_chart(fig_testers, use_container_width=True)
+        else:
+            st.info("No bug data available for analytics. Start adding bugs to see insights!")bug['defect_id']} added successfully!")
                     st.balloons()
                 else:
                     st.error("❌ Please fill in all required fields (Offer ID, Tested By, Issue Description)")
@@ -1694,9 +1886,9 @@ def main():
         
         st.markdown("---")
         
-        # Navigation
+        # Navigation - Bug Tracker always visible
+        st.subheader("📍 Navigation")
         if st.session_state.file_uploaded:
-            st.subheader("📍 Navigation")
             page = st.radio(
                 "Select Page",
                 ["🏠 Home", "📊 Statistics", "🐛 Issues", "🔄 Comparison", "📝 Summary", "👤 Tester Stats", "🔧 Bug Tracker"],
@@ -1770,11 +1962,11 @@ def main():
                 st.markdown("**Pending** - In Progress")
         
         st.markdown("---")
-        st.caption("Built with ❤️ using Streamlit")
+        st.caption("Created By: Muhammad Ahsan")
         st.caption("Version 1.0.0")
     
     # Main content
-    if page == "🏠 Home" or not st.session_state.file_uploaded:
+    if page == "🏠 Home":
         # Title with better visibility
         st.markdown("""
         <h1 style='color: #f1f5f9; font-size: 2.5rem; font-weight: 700; 
@@ -1849,7 +2041,7 @@ def main():
                     <li><strong>📤 Upload Your File:</strong> Hit that upload button in the sidebar (it's waiting for you!)</li>
                     <li><strong>✅ File Check:</strong> Make sure your Excel has all the magic columns we need</li>
                     <li><strong>🎨 Pick Your View:</strong> Statistics, Issues, Comparisons - it's like Netflix for test data!</li>
-                    <li><strong>💾 Export & Share:</strong> Download the juicy details and impress your team</li>
+                    <li><strong>💾 Export & Share:</strong> Download the details and impress your team</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
