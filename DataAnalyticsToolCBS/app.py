@@ -1692,7 +1692,7 @@ def display_bug_tracker():
                 title='Bugs Reported by Tester',
                 labels={'x': 'Tester', 'y': 'Number of Bugs'}
             )
-            st.plotly_chart(fig_testers, use_container_width=True)
+                            st.plotly_chart(fig_testers, use_container_width=True)
         else:
             st.info("No bug data available for analytics. Start adding bugs to see insights!")
 
