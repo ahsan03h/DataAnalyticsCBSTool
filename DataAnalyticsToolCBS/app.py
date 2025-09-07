@@ -707,6 +707,135 @@ def main_dashboard():
             
             with tabs[8]:
                 st.subheader("Bugs Resolved Today")
+                today_resolved = get_today_resolved(team_df)
+                
+                if len(today_resolved) > 0:
+                    st.success(f"🎉 {len(today_resolved)} bugs resolved today!")
+                    display_bug_table(today_resolved, "Today's Resolved Bugs")
+                else:
+                    st.info("No bugs resolved today yet")
+            
+            with tabs[9]:
+                generate_daily_report(team_df)
+        
+        elif st.session_state.role == "team_member":
+            # Team members see comprehensive tabs with their data
+            tabs = st.tabs([
+                "📋 All My Bugs",
+                "🔴 Open",
+                "❌ Rejected", 
+                "✅ Resolved",
+                "🔄 Regression Testing",
+                "📊 My Analytics",
+                "📅 Today's Progress"
+            ])
+            
+            member_df = team_df[team_df['Submitted By'] == st.session_state.team_member]
+            
+            with tabs[0]:
+                display_bug_table(member_df, "All My Bugs")
+            
+            with tabs[1]:
+                my_open = member_df[member_df['Status'] == 'Open']
+                display_bug_table(my_open, "My Open Bugs")
+            
+            with tabs[2]:
+                my_rejected = member_df[member_df['Status'] == 'Rejected']
+                display_bug_table(my_rejected, "My Rejected Bugs")
+            
+            with tabs[3]:
+                my_resolved = member_df[member_df['Status'].isin(['Closed', 'Canceled'])]
+                
+                # Show breakdown of resolved bugs
+                col1, col2 = st.columns(2)
+                with col1:
+                    closed_count = len(member_df[member_df['Status'] == 'Closed'])
+                    st.metric("Closed", closed_count)
+                with col2:
+                    canceled_count = len(member_df[member_df['Status'] == 'Canceled'])
+                    st.metric("Canceled", canceled_count)
+                
+                display_bug_table(my_resolved, "My Resolved Bugs")
+            
+            with tabs[4]:
+                my_regression = member_df[member_df['Status'] == 'Regression Test']
+                display_bug_table(my_regression, "My Bugs in Regression Testing")
+            
+            with tabs[5]:
+                create_individual_analysis(team_df, st.session_state.team_member)
+            
+            with tabs[6]:
+                st.subheader("Today's Progress")
+                today_resolved = get_today_resolved(member_df)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Resolved Today", len(today_resolved))
+                with col2:
+                    pending = len(member_df[member_df['Ownership'] == 'Our End'])
+                    st.metric("Still Pending", pending)
+                with col3:
+                    total_active = len(member_df[~member_df['Status'].isin(['Closed', 'Canceled'])])
+                    st.metric("Active Bugs", total_active)
+                
+                if len(today_resolved) > 0:
+                    st.success(f"🎉 Great job! You resolved {len(today_resolved)} bug(s) today!")
+                    display_bug_table(today_resolved, "Bugs Resolved Today")
+                else:
+                    st.info("No bugs resolved today yet. Keep working on your pending items!")
+        
+        else:  # Viewer role
+            tabs = st.tabs([
+                "📊 Team Overview",
+                "📈 Status Distribution"
+            ])
+            
+            with tabs[0]:
+                st.subheader("Team Bug Overview")
+                member_counts = team_df['Submitted By'].value_counts()
+                
+                fig = px.bar(
+                    x=member_counts.values,
+                    y=[name.split()[0] for name in member_counts.index],
+                    orientation='h',
+                    title="Bugs by Team Member",
+                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with tabs[1]:
+                st.subheader("Bug Status Distribution")
+                status_dist = team_df['Status'].value_counts()
+                
+                fig = px.pie(
+                    values=status_dist.values,
+                    names=status_dist.index,
+                    title="Overall Status Distribution",
+                    hole=0.4
+                )
+                st.plotly_chart(fig, use_container_width=True)
+    
+    else:
+        st.info("👆 Please upload an Excel file from the bug portal to get started")
+        
+        if st.session_state.role == "viewer":
+            st.warning("As a viewer, you need a manager or team member to upload data first.")
+        
+        st.markdown("""
+        ### 📌 Dashboard Features:
+        
+        1. **Bug Tracking by Status**: Monitor bugs in different states
+        2. **Analytics**: Visual insights into bug distribution and trends
+        3. **Daily Progress**: Track bugs resolved today
+        4. **Comprehensive Reports**: Generate detailed summaries
+        5. **Real-time Updates**: All metrics update automatically
+        
+        ### 👥 Team Members Tracked:
+        """)
+        
+        for i, member in enumerate(TEAM_MEMBERS, 1):
+            st.write(f"{i}. {member.split()[0]}")
+
 # Main app
 def main():
     init_session_state()
