@@ -109,14 +109,14 @@ TEAM_MEMBERS = [
 
 # User credentials and roles
 USERS = {
-    "admin": {
-        "password": hashlib.sha256("admin123".encode()).hexdigest(),
+    "ahsan03h": {
+        "password": hashlib.sha256("3188jkjk".encode()).hexdigest(),
         "role": "manager",
         "name": "Admin User",
         "team_member": None
     },
-    "manager": {
-        "password": hashlib.sha256("manager123".encode()).hexdigest(),
+    "ahsan.baqai": {
+        "password": hashlib.sha256("ahsan3188".encode()).hexdigest(),
         "role": "manager",
         "name": "Team Manager",
         "team_member": None
