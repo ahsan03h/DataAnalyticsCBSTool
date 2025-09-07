@@ -238,7 +238,7 @@ def login_page():
     """, unsafe_allow_html=True)
     
     st.markdown("<h1 class='main-title'>🐛 Bug Management System</h1>", unsafe_allow_html=True)
-    st.markdown("<div class='project-title'>Project Phoenix</div>", unsafe_allow_html=True)
+    st.markdown("<div class='project-title'>PROJECT PHOENIX</div>", unsafe_allow_html=True)
     
     # Create columns for centering
     col1, col2, col3 = st.columns([1, 2, 1])
