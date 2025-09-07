@@ -133,7 +133,7 @@ USERS = {
         "name": "Tooba Shahid",
         "team_member": "2toobashahid 2toobashahid"
     },
-    "abdul": {
+    "abdullah.umar": {
         "password": hashlib.sha256("abdul123".encode()).hexdigest(),
         "role": "team_member",
         "name": "Abdul MR",
