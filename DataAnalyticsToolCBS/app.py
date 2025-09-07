@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
 from io import BytesIO
+import hashlib
 
 # Set page configuration
 st.set_page_config(
@@ -34,6 +35,14 @@ st.markdown("""
     .rejected-badge { background-color: #e91e63; }
     .closed-badge { background-color: #4caf50; }
     .pending-badge { background-color: #2196f3; }
+    .login-container {
+        max-width: 400px;
+        margin: auto;
+        padding: 2rem;
+        background-color: #f0f2f6;
+        border-radius: 10px;
+        margin-top: 5rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,16 +60,193 @@ TEAM_MEMBERS = [
     "azan25 azan25"
 ]
 
+# User credentials and roles (in production, use environment variables or secure storage)
+USERS = {
+    "admin": {
+        "password": hashlib.sha256("admin123".encode()).hexdigest(),
+        "role": "manager",
+        "name": "Admin User",
+        "team_member": None
+    },
+    "manager": {
+        "password": hashlib.sha256("manager123".encode()).hexdigest(),
+        "role": "manager",
+        "name": "Team Manager",
+        "team_member": None
+    },
+    "laiba": {
+        "password": hashlib.sha256("laiba123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Laiba Muqadas",
+        "team_member": "2laibamuqadas 2laibamuqadas"
+    },
+    "tooba": {
+        "password": hashlib.sha256("tooba123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Tooba Shahid",
+        "team_member": "2toobashahid 2toobashahid"
+    },
+    "abdul": {
+        "password": hashlib.sha256("abdul123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Abdul MR",
+        "team_member": "abdumr076 abdumr076"
+    },
+    "ahsan": {
+        "password": hashlib.sha256("ahsan123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Ahsan",
+        "team_member": "ahsan03h ahsan03h"
+    },
+    "sehrish": {
+        "password": hashlib.sha256("sehrish123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Sehrish",
+        "team_member": "2sehrish 2sehrish"
+    },
+    "qasim": {
+        "password": hashlib.sha256("qasim123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Qasim Shah",
+        "team_member": "qasim.shah1947 qasim.shah1947"
+    },
+    "abdullah": {
+        "password": hashlib.sha256("abdullah123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Abdullah Masood",
+        "team_member": "abdullah_masood abdullah_masood"
+    },
+    "talha": {
+        "password": hashlib.sha256("talha123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Talha Munir",
+        "team_member": "talha_munir29 talha_munir29"
+    },
+    "waqas": {
+        "password": hashlib.sha256("waqas123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Waqas Bin Shabeer",
+        "team_member": "waqasbinshabeer waqasbinshabeer"
+    },
+    "azan": {
+        "password": hashlib.sha256("azan123".encode()).hexdigest(),
+        "role": "team_member",
+        "name": "Azan",
+        "team_member": "azan25 azan25"
+    },
+    "viewer": {
+        "password": hashlib.sha256("view123".encode()).hexdigest(),
+        "role": "viewer",
+        "name": "Guest Viewer",
+        "team_member": None
+    }
+}
+
 # Status categories
 STATUS_MAPPING = {
     "Accepted": "Other Party",
     "Rejected": "Our End",
     "Reopen": "Other Party",
     "Regression Test": "Our End",
-    "Open": "Check Handler",  # Need to check handler
+    "Open": "Check Handler",
     "Canceled": "Resolved",
     "Closed": "Resolved"
 }
+
+# Initialize session state
+def init_session_state():
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'username' not in st.session_state:
+        st.session_state.username = None
+    if 'role' not in st.session_state:
+        st.session_state.role = None
+    if 'name' not in st.session_state:
+        st.session_state.name = None
+    if 'team_member' not in st.session_state:
+        st.session_state.team_member = None
+    if 'data' not in st.session_state:
+        st.session_state.data = None
+    if 'team_data' not in st.session_state:
+        st.session_state.team_data = None
+
+def authenticate(username, password):
+    """Authenticate user credentials"""
+    if username in USERS:
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        if USERS[username]["password"] == hashed_password:
+            return True, USERS[username]
+    return False, None
+
+def login_page():
+    """Display login page"""
+    st.markdown("<h1 style='text-align: center;'>🐛 Bug Management System</h1>", unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+        st.markdown("### Login")
+        
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            col1, col2 = st.columns(2)
+            with col1:
+                submit = st.form_submit_button("Login", use_container_width=True, type="primary")
+            with col2:
+                demo = st.form_submit_button("Demo Mode", use_container_width=True)
+            
+            if submit:
+                if username and password:
+                    is_valid, user_info = authenticate(username, password)
+                    if is_valid:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = user_info["role"]
+                        st.session_state.name = user_info["name"]
+                        st.session_state.team_member = user_info["team_member"]
+                        st.success(f"Welcome, {user_info['name']}!")
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password")
+                else:
+                    st.warning("Please enter both username and password")
+            
+            if demo:
+                st.session_state.authenticated = True
+                st.session_state.username = "demo"
+                st.session_state.role = "viewer"
+                st.session_state.name = "Demo User"
+                st.session_state.team_member = None
+                st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Display available users for demo
+    with st.expander("📋 Demo Credentials"):
+        st.markdown("""
+        **Manager Access:**
+        - Username: `manager` | Password: `manager123`
+        - Username: `admin` | Password: `admin123`
+        
+        **Team Member Access:**
+        - Username: `laiba` | Password: `laiba123`
+        - Username: `tooba` | Password: `tooba123`
+        - Username: `abdul` | Password: `abdul123`
+        - (and others - each team member has their username)
+        
+        **Viewer Access:**
+        - Username: `viewer` | Password: `view123`
+        
+        **Demo Mode:**
+        - Click "Demo Mode" for read-only access
+        """)
+
+def logout():
+    """Logout user"""
+    for key in ['authenticated', 'username', 'role', 'name', 'team_member', 'data', 'team_data']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
 
 def get_last_four_digits(defect_no):
     """Extract last 4 digits from defect number"""
@@ -69,20 +255,13 @@ def get_last_four_digits(defect_no):
 def load_and_process_data(uploaded_file):
     """Load and process the uploaded Excel file"""
     try:
-        # Read Excel file
         df = pd.read_excel(uploaded_file, sheet_name=0)
-        
-        # Add last 4 digits column
         df['Defect_ID'] = df['Defect No.'].apply(get_last_four_digits)
-        
-        # Convert datetime columns
         df['Creation Time'] = pd.to_datetime(df['Creation Time'], errors='coerce')
         df['Status Time'] = pd.to_datetime(df['Status Time'], errors='coerce')
         
-        # Filter for team members only
         team_df = df[df['Submitted By'].isin(TEAM_MEMBERS)].copy()
         
-        # Determine ownership for "Open" status
         team_df['Ownership'] = team_df.apply(
             lambda row: 'Our End' if (row['Status'] == 'Open' and row['Handler'] == row['Submitted By']) 
             else ('Other Party' if row['Status'] == 'Open' 
@@ -103,13 +282,18 @@ def get_today_resolved(df):
     ]
     return today_resolved
 
-def create_summary_metrics(team_df):
-    """Create summary metrics for the dashboard"""
+def create_summary_metrics(team_df, user_role, team_member):
+    """Create summary metrics based on user role"""
+    if user_role == "team_member" and team_member:
+        # Filter for specific team member
+        team_df = team_df[team_df['Submitted By'] == team_member]
+        st.info(f"Showing data for: {team_member.split()[0]}")
+    
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         total_bugs = len(team_df)
-        st.metric("Total Team Bugs", total_bugs)
+        st.metric("Total Bugs", total_bugs)
     
     with col2:
         regression = len(team_df[team_df['Status'] == 'Regression Test'])
@@ -127,28 +311,26 @@ def create_summary_metrics(team_df):
         resolved = len(team_df[team_df['Status'].isin(['Closed', 'Canceled'])])
         st.metric("Resolved", resolved, delta=f"{resolved/total_bugs*100:.1f}%" if total_bugs > 0 else "0%")
 
-def display_bug_table(df, title="Bugs"):
+def display_bug_table(df, title="Bugs", can_edit=False):
     """Display a formatted bug table"""
     if len(df) > 0:
         st.subheader(f"{title} ({len(df)} bugs)")
         
-        # Select and reorder columns for display
         display_columns = ['Defect_ID', 'Submitted By', 'Status', 'Handler', 
                           'Creation Time', 'Status Time', 'Brief Description']
         
-        # Filter columns that exist in the dataframe
         display_columns = [col for col in display_columns if col in df.columns]
-        
-        # Create a copy for display
         display_df = df[display_columns].copy()
         
-        # Format datetime columns
         if 'Creation Time' in display_df.columns:
             display_df['Creation Time'] = display_df['Creation Time'].dt.strftime('%Y-%m-%d %H:%M')
         if 'Status Time' in display_df.columns:
             display_df['Status Time'] = display_df['Status Time'].dt.strftime('%Y-%m-%d %H:%M')
         
-        st.dataframe(display_df, use_container_width=True, height=400)
+        if can_edit and st.session_state.role in ['manager', 'admin']:
+            st.data_editor(display_df, use_container_width=True, height=400)
+        else:
+            st.dataframe(display_df, use_container_width=True, height=400)
     else:
         st.info(f"No bugs found in {title}")
 
@@ -170,7 +352,6 @@ def create_individual_analysis(team_df, member):
             resolved = len(member_df[member_df['Status'].isin(['Closed', 'Canceled'])])
             st.metric("Resolved", resolved)
         
-        # Status distribution chart
         status_counts = member_df['Status'].value_counts()
         fig = px.pie(
             values=status_counts.values, 
@@ -179,15 +360,12 @@ def create_individual_analysis(team_df, member):
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        # Bug list
         display_bug_table(member_df, f"All Bugs for {member.split()[0]}")
     else:
         st.info(f"No bugs found for {member}")
 
 def create_team_analytics(team_df):
     """Create team-wide analytics"""
-    
-    # Team member comparison
     st.subheader("Team Member Bug Distribution")
     member_counts = team_df['Submitted By'].value_counts()
     
@@ -200,7 +378,6 @@ def create_team_analytics(team_df):
     )
     st.plotly_chart(fig1, use_container_width=True)
     
-    # Status distribution across team
     st.subheader("Overall Status Distribution")
     status_dist = team_df['Status'].value_counts()
     
@@ -212,7 +389,6 @@ def create_team_analytics(team_df):
     )
     st.plotly_chart(fig2, use_container_width=True)
     
-    # Ownership distribution
     st.subheader("Bug Ownership Distribution")
     ownership_dist = team_df['Ownership'].value_counts()
     
@@ -230,7 +406,6 @@ def create_team_analytics(team_df):
     )
     st.plotly_chart(fig3, use_container_width=True)
     
-    # Timeline analysis
     st.subheader("Bug Creation Timeline")
     team_df_timeline = team_df.copy()
     team_df_timeline['Date'] = team_df_timeline['Creation Time'].dt.date
@@ -251,10 +426,8 @@ def generate_daily_report(team_df):
     
     st.subheader("📊 Daily Report Summary")
     
-    # Today's resolved bugs
     today_resolved = get_today_resolved(team_df)
     
-    # Calculate metrics
     total_pending_start = len(team_df[team_df['Ownership'] == 'Our End'])
     resolved_today = len(today_resolved)
     still_pending = total_pending_start - resolved_today
@@ -274,7 +447,6 @@ def generate_daily_report(team_df):
         resolution_rate = (resolved_today / total_pending_start * 100) if total_pending_start > 0 else 0
         st.metric("Resolution Rate", f"{resolution_rate:.1f}%")
     
-    # Detailed breakdown by member
     st.subheader("Member-wise Resolution Summary")
     
     member_summary = []
@@ -296,48 +468,82 @@ def generate_daily_report(team_df):
         summary_df = pd.DataFrame(member_summary)
         st.dataframe(summary_df, use_container_width=True)
         
-        # Download button for report
-        report_buffer = BytesIO()
-        with pd.ExcelWriter(report_buffer, engine='openpyxl') as writer:
-            summary_df.to_excel(writer, sheet_name='Daily Summary', index=False)
-            today_resolved.to_excel(writer, sheet_name='Resolved Today', index=False)
-        
-        report_buffer.seek(0)
-        st.download_button(
-            label="📥 Download Daily Report",
-            data=report_buffer,
-            file_name=f"daily_bug_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if st.session_state.role in ['manager', 'admin']:
+            report_buffer = BytesIO()
+            with pd.ExcelWriter(report_buffer, engine='openpyxl') as writer:
+                summary_df.to_excel(writer, sheet_name='Daily Summary', index=False)
+                today_resolved.to_excel(writer, sheet_name='Resolved Today', index=False)
+            
+            report_buffer.seek(0)
+            st.download_button(
+                label="📥 Download Daily Report",
+                data=report_buffer,
+                file_name=f"daily_bug_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
-# Main app
-def main():
-    st.title("🐛 Bug Management Dashboard")
+def main_dashboard():
+    """Main dashboard after login"""
+    # Header with user info and logout
+    col1, col2, col3 = st.columns([6, 2, 1])
+    with col1:
+        st.title("🐛 Bug Management Dashboard")
+    with col2:
+        st.markdown(f"**👤 {st.session_state.name}**")
+        st.caption(f"Role: {st.session_state.role.title()}")
+    with col3:
+        if st.button("Logout", type="secondary"):
+            logout()
+    
     st.markdown("---")
     
-    # Sidebar for file upload
+    # Sidebar for file upload (only for managers and admin)
     with st.sidebar:
-        st.header("📁 Upload Data")
-        uploaded_file = st.file_uploader(
-            "Choose Excel file", 
-            type=['xlsx', 'xls'],
-            help="Upload the bug tracking Excel file from the portal"
-        )
+        st.header("📁 Dashboard Controls")
         
-        if uploaded_file is not None:
-            st.success("File uploaded successfully!")
-            st.info(f"File: {uploaded_file.name}")
-    
-    if uploaded_file is not None:
-        # Load and process data
-        all_df, team_df = load_and_process_data(uploaded_file)
+        # Show user info in sidebar
+        st.info(f"""
+        **Current User:** {st.session_state.name}  
+        **Role:** {st.session_state.role.title()}  
+        **Access Level:** {'Full' if st.session_state.role in ['manager', 'admin'] else 'Limited'}
+        """)
         
-        if team_df is not None and len(team_df) > 0:
-            # Display summary metrics
-            create_summary_metrics(team_df)
-            st.markdown("---")
+        if st.session_state.role in ['manager', 'admin', 'team_member']:
+            uploaded_file = st.file_uploader(
+                "Choose Excel file", 
+                type=['xlsx', 'xls'],
+                help="Upload the bug tracking Excel file from the portal"
+            )
             
-            # Create tabs
+            if uploaded_file is not None:
+                st.success("File uploaded successfully!")
+                st.info(f"File: {uploaded_file.name}")
+                
+                # Process the file
+                all_df, team_df = load_and_process_data(uploaded_file)
+                st.session_state.data = all_df
+                st.session_state.team_data = team_df
+        else:
+            st.warning("File upload is disabled for viewers")
+            uploaded_file = None
+    
+    # Main content area
+    if st.session_state.team_data is not None:
+        team_df = st.session_state.team_data
+        
+        # Filter data based on user role
+        if st.session_state.role == "team_member" and st.session_state.team_member:
+            # Team members see only their own data by default
+            personal_df = team_df[team_df['Submitted By'] == st.session_state.team_member]
+            create_summary_metrics(personal_df, st.session_state.role, st.session_state.team_member)
+        else:
+            create_summary_metrics(team_df, st.session_state.role, None)
+        
+        st.markdown("---")
+        
+        # Define tabs based on user role
+        if st.session_state.role in ['manager', 'admin']:
+            # Managers see all tabs
             tabs = st.tabs([
                 "📋 Regression Testing",
                 "🔴 Open (Our End)",
@@ -351,30 +557,24 @@ def main():
                 "📑 Daily Report"
             ])
             
-            # Tab 1: Regression Testing
             with tabs[0]:
                 regression_df = team_df[team_df['Status'] == 'Regression Test']
-                display_bug_table(regression_df, "Bugs in Regression Testing")
+                display_bug_table(regression_df, "Bugs in Regression Testing", can_edit=True)
             
-            # Tab 2: Open (Our End)
             with tabs[1]:
                 open_our_df = team_df[(team_df['Status'] == 'Open') & (team_df['Ownership'] == 'Our End')]
-                display_bug_table(open_our_df, "Open Bugs (Our End)")
+                display_bug_table(open_our_df, "Open Bugs (Our End)", can_edit=True)
             
-            # Tab 3: Rejected
             with tabs[2]:
                 rejected_df = team_df[team_df['Status'] == 'Rejected']
-                display_bug_table(rejected_df, "Rejected Bugs")
+                display_bug_table(rejected_df, "Rejected Bugs", can_edit=True)
             
-            # Tab 4: Closed & Canceled
             with tabs[3]:
                 resolved_df = team_df[team_df['Status'].isin(['Closed', 'Canceled'])]
                 display_bug_table(resolved_df, "Resolved Bugs (Closed & Canceled)")
             
-            # Tab 5: Individual Team Members
             with tabs[4]:
                 st.subheader("Bugs by Individual Team Member")
-                
                 selected_member = st.selectbox(
                     "Select Team Member",
                     options=TEAM_MEMBERS,
@@ -383,8 +583,6 @@ def main():
                 
                 if selected_member:
                     member_df = team_df[team_df['Submitted By'] == selected_member]
-                    
-                    # Show member's bugs grouped by status
                     st.markdown(f"### {selected_member.split()[0]}'s Bugs")
                     
                     col1, col2 = st.columns(2)
@@ -408,19 +606,15 @@ def main():
                     
                     display_bug_table(member_df, f"All Bugs for {selected_member.split()[0]}")
             
-            # Tab 6: Pending (Other Party)
             with tabs[5]:
                 other_party_df = team_df[team_df['Ownership'] == 'Other Party']
                 display_bug_table(other_party_df, "Bugs Pending on Other Party")
             
-            # Tab 7: Team Analytics
             with tabs[6]:
                 create_team_analytics(team_df)
             
-            # Tab 8: Individual Analytics
             with tabs[7]:
                 st.subheader("Individual Team Member Analytics")
-                
                 selected_member_analytics = st.selectbox(
                     "Select Team Member for Analytics",
                     options=TEAM_MEMBERS,
@@ -431,7 +625,6 @@ def main():
                 if selected_member_analytics:
                     create_individual_analysis(team_df, selected_member_analytics)
             
-            # Tab 9: Today's Resolved
             with tabs[8]:
                 st.subheader("Bugs Resolved Today")
                 today_resolved = get_today_resolved(team_df)
@@ -442,32 +635,133 @@ def main():
                 else:
                     st.info("No bugs resolved today yet")
             
-            # Tab 10: Daily Report
             with tabs[9]:
                 generate_daily_report(team_df)
         
-        else:
-            st.warning("No data found for team members in the uploaded file.")
+        elif st.session_state.role == "team_member":
+            # Team members see limited tabs
+            tabs = st.tabs([
+                "📋 My Bugs",
+                "🔴 My Open Bugs",
+                "✅ My Resolved",
+                "📊 My Analytics",
+                "👥 Team Overview"
+            ])
+            
+            member_df = team_df[team_df['Submitted By'] == st.session_state.team_member]
+            
+            with tabs[0]:
+                display_bug_table(member_df, "My Bugs")
+            
+            with tabs[1]:
+                my_open = member_df[member_df['Status'] == 'Open']
+                display_bug_table(my_open, "My Open Bugs")
+            
+            with tabs[2]:
+                my_resolved = member_df[member_df['Status'].isin(['Closed', 'Canceled'])]
+                display_bug_table(my_resolved, "My Resolved Bugs")
+            
+            with tabs[3]:
+                create_individual_analysis(team_df, st.session_state.team_member)
+            
+            with tabs[4]:
+                st.subheader("Team Overview")
+                member_counts = team_df['Submitted By'].value_counts()
+                
+                fig = px.bar(
+                    x=member_counts.values,
+                    y=[name.split()[0] for name in member_counts.index],
+                    orientation='h',
+                    title="Team Bug Distribution",
+                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        
+        else:  # Viewer role
+            tabs = st.tabs([
+                "📊 Team Overview",
+                "📈 Status Distribution"
+            ])
+            
+            with tabs[0]:
+                st.subheader("Team Bug Overview")
+                member_counts = team_df['Submitted By'].value_counts()
+                
+                fig = px.bar(
+                    x=member_counts.values,
+                    y=[name.split()[0] for name in member_counts.index],
+                    orientation='h',
+                    title="Bugs by Team Member",
+                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with tabs[1]:
+                st.subheader("Bug Status Distribution")
+                status_dist = team_df['Status'].value_counts()
+                
+                fig = px.pie(
+                    values=status_dist.values,
+                    names=status_dist.index,
+                    title="Overall Status Distribution",
+                    hole=0.4
+                )
+                st.plotly_chart(fig, use_container_width=True)
     
     else:
-        # Welcome message when no file is uploaded
         st.info("👆 Please upload an Excel file from the bug portal to get started")
         
+        if st.session_state.role == "viewer":
+            st.warning("As a viewer, you need a manager or team member to upload data first.")
+        
         st.markdown("""
-        ### 📌 Features of this Dashboard:
+        ### 📌 Features Available Based on Your Role:
+        """)
         
-        1. **Bug Tracking by Status**: Monitor bugs in different states (Regression Testing, Open, Rejected, etc.)
-        2. **Team Member Analysis**: Track individual team member's bug status
-        3. **Ownership Identification**: Automatically determine if bugs are pending on your team or other parties
-        4. **Daily Reporting**: Generate comprehensive reports for management
-        5. **Real-time Analytics**: Visual insights into bug distribution and trends
-        6. **Today's Progress**: Track bugs resolved today
+        if st.session_state.role in ['manager', 'admin']:
+            st.markdown("""
+            **Manager/Admin Access:**
+            - ✅ Full access to all team data
+            - ✅ Can upload and edit bug data
+            - ✅ Generate and download daily reports
+            - ✅ View all team analytics
+            - ✅ Access individual member data
+            """)
+        elif st.session_state.role == "team_member":
+            st.markdown("""
+            **Team Member Access:**
+            - ✅ View and manage your own bugs
+            - ✅ Upload bug data files
+            - ✅ View your personal analytics
+            - ✅ See team overview statistics
+            - ❌ Cannot edit other members' data
+            - ❌ Cannot generate manager reports
+            """)
+        else:  # Viewer
+            st.markdown("""
+            **Viewer Access:**
+            - ✅ View team overview and statistics
+            - ✅ Read-only access to dashboards
+            - ❌ Cannot upload files
+            - ❌ Cannot edit any data
+            - ❌ Cannot download reports
+            """)
         
+        st.markdown("""
         ### 👥 Team Members Tracked:
         """)
         
         for i, member in enumerate(TEAM_MEMBERS, 1):
             st.write(f"{i}. {member.split()[0]}")
+
+# Main app
+def main():
+    init_session_state()
+    
+    if not st.session_state.authenticated:
+        login_page()
+    else:
+        main_dashboard()
 
 if __name__ == "__main__":
     main()
