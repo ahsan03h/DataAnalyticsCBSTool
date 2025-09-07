@@ -36,12 +36,59 @@ st.markdown("""
     .closed-badge { background-color: #4caf50; }
     .pending-badge { background-color: #2196f3; }
     .login-container {
-        max-width: 400px;
+        max-width: 380px;
         margin: auto;
-        padding: 2rem;
-        background-color: #f0f2f6;
+        padding: 2.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        margin-top: 2rem;
+    }
+    .login-header {
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 1.8rem;
+        font-weight: bold;
+    }
+    .stTextInput > div > div > input {
+        background-color: rgba(255, 255, 255, 0.9);
         border-radius: 10px;
-        margin-top: 5rem;
+        padding: 10px;
+    }
+    .main-title {
+        text-align: center;
+        background: linear-gradient(135deg, #00B9E8 0%, #0066CC 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .project-title {
+        text-align: center;
+        color: #0066CC;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        padding: 15px;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .telenor-style {
+        background: linear-gradient(135deg, #00B9E8 0%, #0066CC 100%);
+        padding: 10px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin: 20px 0;
+    }
+    .login-form-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-top: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -60,7 +107,7 @@ TEAM_MEMBERS = [
     "azan25 azan25"
 ]
 
-# User credentials and roles (in production, use environment variables or secure storage)
+# User credentials and roles
 USERS = {
     "admin": {
         "password": hashlib.sha256("admin123".encode()).hexdigest(),
@@ -180,66 +227,72 @@ def authenticate(username, password):
 
 def login_page():
     """Display login page"""
-    st.markdown("<h1 style='text-align: center;'>🐛 Bug Management System</h1>", unsafe_allow_html=True)
+    # Telenor-style logo using HTML/CSS
+    st.markdown("""
+        <div style='text-align: center; margin-bottom: 2rem;'>
+            <div style='display: inline-block; background: linear-gradient(135deg, #00B9E8 0%, #0066CC 100%); 
+                        padding: 15px 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.15);'>
+                <h1 style='color: white; margin: 0; font-size: 2.5rem; font-weight: bold;'>⚡ TELENOR</h1>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
-    with st.container():
-        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-        st.markdown("### Login")
-        
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            col1, col2 = st.columns(2)
-            with col1:
-                submit = st.form_submit_button("Login", use_container_width=True, type="primary")
-            with col2:
-                demo = st.form_submit_button("Demo Mode", use_container_width=True)
+    st.markdown("<h1 class='main-title'>🐛 Bug Management System</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='project-title'>Project Phoenix</div>", unsafe_allow_html=True)
+    
+    # Create columns for centering
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.container():
+            st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+            st.markdown("<div class='login-header'>Sign In</div>", unsafe_allow_html=True)
             
-            if submit:
-                if username and password:
-                    is_valid, user_info = authenticate(username, password)
-                    if is_valid:
-                        st.session_state.authenticated = True
-                        st.session_state.username = username
-                        st.session_state.role = user_info["role"]
-                        st.session_state.name = user_info["name"]
-                        st.session_state.team_member = user_info["team_member"]
-                        st.success(f"Welcome, {user_info['name']}!")
-                        st.rerun()
+            with st.form("login_form", clear_on_submit=False):
+                username = st.text_input("👤 Username", placeholder="Enter your username")
+                password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    submit = st.form_submit_button("🚀 Login", use_container_width=True, type="primary")
+                with col_btn2:
+                    demo = st.form_submit_button("👁️ Guest Access", use_container_width=True)
+                
+                if submit:
+                    if username and password:
+                        is_valid, user_info = authenticate(username, password)
+                        if is_valid:
+                            st.session_state.authenticated = True
+                            st.session_state.username = username
+                            st.session_state.role = user_info["role"]
+                            st.session_state.name = user_info["name"]
+                            st.session_state.team_member = user_info["team_member"]
+                            st.success(f"Welcome, {user_info['name']}!")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid username or password")
                     else:
-                        st.error("Invalid username or password")
-                else:
-                    st.warning("Please enter both username and password")
+                        st.warning("⚠️ Please enter both username and password")
+                
+                if demo:
+                    st.session_state.authenticated = True
+                    st.session_state.username = "demo"
+                    st.session_state.role = "viewer"
+                    st.session_state.name = "Demo User"
+                    st.session_state.team_member = None
+                    st.rerun()
             
-            if demo:
-                st.session_state.authenticated = True
-                st.session_state.username = "demo"
-                st.session_state.role = "viewer"
-                st.session_state.name = "Demo User"
-                st.session_state.team_member = None
-                st.rerun()
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
     
-    # Display available users for demo
-    with st.expander("📋 Demo Credentials"):
-        st.markdown("""
-        **Manager Access:**
-        - Username: `manager` | Password: `manager123`
-        - Username: `admin` | Password: `admin123`
-        
-        **Team Member Access:**
-        - Username: `laiba` | Password: `laiba123`
-        - Username: `tooba` | Password: `tooba123`
-        - Username: `abdul` | Password: `abdul123`
-        - (and others - each team member has their username)
-        
-        **Viewer Access:**
-        - Username: `viewer` | Password: `view123`
-        
-        **Demo Mode:**
-        - Click "Demo Mode" for read-only access
-        """)
+    # Footer
+    st.markdown("""
+        <div style='text-align: center; margin-top: 3rem; color: #666;'>
+            <small>© 2025 Project Phoenix - Bug Management System</small>
+        </div>
+    """, unsafe_allow_html=True)
 
 def logout():
     """Logout user"""
@@ -287,7 +340,6 @@ def create_summary_metrics(team_df, user_role, team_member):
     if user_role == "team_member" and team_member:
         # Filter for specific team member
         team_df = team_df[team_df['Submitted By'] == team_member]
-        st.info(f"Showing data for: {team_member.split()[0]}")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
@@ -300,8 +352,8 @@ def create_summary_metrics(team_df, user_role, team_member):
         st.metric("Regression Testing", regression, delta=f"{regression/total_bugs*100:.1f}%" if total_bugs > 0 else "0%")
     
     with col3:
-        open_our_end = len(team_df[(team_df['Status'] == 'Open') & (team_df['Ownership'] == 'Our End')])
-        st.metric("Open (Our End)", open_our_end)
+        open_bugs = len(team_df[team_df['Status'] == 'Open'])
+        st.metric("Open", open_bugs)
     
     with col4:
         rejected = len(team_df[team_df['Status'] == 'Rejected'])
@@ -339,30 +391,54 @@ def create_individual_analysis(team_df, member):
     member_df = team_df[team_df['Submitted By'] == member]
     
     if len(member_df) > 0:
-        col1, col2, col3 = st.columns(3)
+        # Detailed metrics for team members
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.metric("Total Bugs", len(member_df))
         
         with col2:
-            pending = len(member_df[member_df['Ownership'] == 'Our End'])
-            st.metric("Pending (Our End)", pending)
+            open_count = len(member_df[member_df['Status'] == 'Open'])
+            st.metric("Open", open_count)
         
         with col3:
+            regression_count = len(member_df[member_df['Status'] == 'Regression Test'])
+            st.metric("Regression Test", regression_count)
+        
+        with col4:
             resolved = len(member_df[member_df['Status'].isin(['Closed', 'Canceled'])])
             st.metric("Resolved", resolved)
+        
+        # Additional row of metrics
+        col5, col6, col7, col8 = st.columns(4)
+        
+        with col5:
+            rejected_count = len(member_df[member_df['Status'] == 'Rejected'])
+            st.metric("Rejected", rejected_count)
+        
+        with col6:
+            closed_count = len(member_df[member_df['Status'] == 'Closed'])
+            st.metric("Closed", closed_count)
+        
+        with col7:
+            canceled_count = len(member_df[member_df['Status'] == 'Canceled'])
+            st.metric("Canceled", canceled_count)
+        
+        with col8:
+            pending_our = len(member_df[member_df['Ownership'] == 'Our End'])
+            st.metric("Pending (Our End)", pending_our)
         
         status_counts = member_df['Status'].value_counts()
         fig = px.pie(
             values=status_counts.values, 
             names=status_counts.index,
-            title=f"Bug Status Distribution for {member.split()[0]}"
+            title=f"Bug Status Distribution"
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        display_bug_table(member_df, f"All Bugs for {member.split()[0]}")
+        display_bug_table(member_df, f"All Bugs")
     else:
-        st.info(f"No bugs found for {member}")
+        st.info(f"No bugs found")
 
 def create_team_analytics(team_df):
     """Create team-wide analytics"""
@@ -490,23 +566,28 @@ def main_dashboard():
         st.title("🐛 Bug Management Dashboard")
     with col2:
         st.markdown(f"**👤 {st.session_state.name}**")
-        st.caption(f"Role: {st.session_state.role.title()}")
+        if st.session_state.role in ['manager', 'admin']:
+            st.caption(f"Role: {st.session_state.role.title()}")
     with col3:
         if st.button("Logout", type="secondary"):
             logout()
     
     st.markdown("---")
     
-    # Sidebar for file upload (only for managers and admin)
+    # Sidebar for file upload
     with st.sidebar:
         st.header("📁 Dashboard Controls")
         
         # Show user info in sidebar
-        st.info(f"""
-        **Current User:** {st.session_state.name}  
-        **Role:** {st.session_state.role.title()}  
-        **Access Level:** {'Full' if st.session_state.role in ['manager', 'admin'] else 'Limited'}
-        """)
+        if st.session_state.role in ['manager', 'admin']:
+            st.info(f"""
+            **Current User:** {st.session_state.name}  
+            **Role:** {st.session_state.role.title()}  
+            """)
+        else:
+            st.info(f"""
+            **Welcome:** {st.session_state.name}
+            """)
         
         if st.session_state.role in ['manager', 'admin', 'team_member']:
             uploaded_file = st.file_uploader(
@@ -533,7 +614,6 @@ def main_dashboard():
         
         # Filter data based on user role
         if st.session_state.role == "team_member" and st.session_state.team_member:
-            # Team members see only their own data by default
             personal_df = team_df[team_df['Submitted By'] == st.session_state.team_member]
             create_summary_metrics(personal_df, st.session_state.role, st.session_state.team_member)
         else:
@@ -627,141 +707,3 @@ def main_dashboard():
             
             with tabs[8]:
                 st.subheader("Bugs Resolved Today")
-                today_resolved = get_today_resolved(team_df)
-                
-                if len(today_resolved) > 0:
-                    st.success(f"🎉 {len(today_resolved)} bugs resolved today!")
-                    display_bug_table(today_resolved, "Today's Resolved Bugs")
-                else:
-                    st.info("No bugs resolved today yet")
-            
-            with tabs[9]:
-                generate_daily_report(team_df)
-        
-        elif st.session_state.role == "team_member":
-            # Team members see limited tabs
-            tabs = st.tabs([
-                "📋 My Bugs",
-                "🔴 My Open Bugs",
-                "✅ My Resolved",
-                "📊 My Analytics",
-                "👥 Team Overview"
-            ])
-            
-            member_df = team_df[team_df['Submitted By'] == st.session_state.team_member]
-            
-            with tabs[0]:
-                display_bug_table(member_df, "My Bugs")
-            
-            with tabs[1]:
-                my_open = member_df[member_df['Status'] == 'Open']
-                display_bug_table(my_open, "My Open Bugs")
-            
-            with tabs[2]:
-                my_resolved = member_df[member_df['Status'].isin(['Closed', 'Canceled'])]
-                display_bug_table(my_resolved, "My Resolved Bugs")
-            
-            with tabs[3]:
-                create_individual_analysis(team_df, st.session_state.team_member)
-            
-            with tabs[4]:
-                st.subheader("Team Overview")
-                member_counts = team_df['Submitted By'].value_counts()
-                
-                fig = px.bar(
-                    x=member_counts.values,
-                    y=[name.split()[0] for name in member_counts.index],
-                    orientation='h',
-                    title="Team Bug Distribution",
-                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        else:  # Viewer role
-            tabs = st.tabs([
-                "📊 Team Overview",
-                "📈 Status Distribution"
-            ])
-            
-            with tabs[0]:
-                st.subheader("Team Bug Overview")
-                member_counts = team_df['Submitted By'].value_counts()
-                
-                fig = px.bar(
-                    x=member_counts.values,
-                    y=[name.split()[0] for name in member_counts.index],
-                    orientation='h',
-                    title="Bugs by Team Member",
-                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with tabs[1]:
-                st.subheader("Bug Status Distribution")
-                status_dist = team_df['Status'].value_counts()
-                
-                fig = px.pie(
-                    values=status_dist.values,
-                    names=status_dist.index,
-                    title="Overall Status Distribution",
-                    hole=0.4
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    else:
-        st.info("👆 Please upload an Excel file from the bug portal to get started")
-        
-        if st.session_state.role == "viewer":
-            st.warning("As a viewer, you need a manager or team member to upload data first.")
-        
-        st.markdown("""
-        ### 📌 Features Available Based on Your Role:
-        """)
-        
-        if st.session_state.role in ['manager', 'admin']:
-            st.markdown("""
-            **Manager/Admin Access:**
-            - ✅ Full access to all team data
-            - ✅ Can upload and edit bug data
-            - ✅ Generate and download daily reports
-            - ✅ View all team analytics
-            - ✅ Access individual member data
-            """)
-        elif st.session_state.role == "team_member":
-            st.markdown("""
-            **Team Member Access:**
-            - ✅ View and manage your own bugs
-            - ✅ Upload bug data files
-            - ✅ View your personal analytics
-            - ✅ See team overview statistics
-            - ❌ Cannot edit other members' data
-            - ❌ Cannot generate manager reports
-            """)
-        else:  # Viewer
-            st.markdown("""
-            **Viewer Access:**
-            - ✅ View team overview and statistics
-            - ✅ Read-only access to dashboards
-            - ❌ Cannot upload files
-            - ❌ Cannot edit any data
-            - ❌ Cannot download reports
-            """)
-        
-        st.markdown("""
-        ### 👥 Team Members Tracked:
-        """)
-        
-        for i, member in enumerate(TEAM_MEMBERS, 1):
-            st.write(f"{i}. {member.split()[0]}")
-
-# Main app
-def main():
-    init_session_state()
-    
-    if not st.session_state.authenticated:
-        login_page()
-    else:
-        main_dashboard()
-
-if __name__ == "__main__":
-    main()
