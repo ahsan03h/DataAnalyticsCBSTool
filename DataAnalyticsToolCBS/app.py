@@ -707,3 +707,14 @@ def main_dashboard():
             
             with tabs[8]:
                 st.subheader("Bugs Resolved Today")
+# Main app
+def main():
+    init_session_state()
+    
+    if not st.session_state.authenticated:
+        login_page()
+    else:
+        main_dashboard()
+
+if __name__ == "__main__":
+    main()
