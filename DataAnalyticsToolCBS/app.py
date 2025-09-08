@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# 🔹 Updated CSS
 st.markdown("""
     <style>
     .metric-card {
@@ -51,10 +51,15 @@ st.markdown("""
         font-size: 1.8rem;
         font-weight: bold;
     }
+    /* 🔹 Username & Password input blue background */
     .stTextInput > div > div > input {
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(0, 102, 204, 0.8);
+        color: white;
         border-radius: 10px;
         padding: 10px;
+    }
+    .stTextInput > div > div > input::placeholder {
+        color: #e0e0e0;
     }
     .main-title {
         text-align: center;
@@ -65,16 +70,13 @@ st.markdown("""
         font-weight: bold;
         margin-bottom: 0.5rem;
     }
+    /* 🔹 Project Phoenix heading now plain white text */
     .project-title {
         text-align: center;
-        color: #0066CC;
+        color: white;
         font-size: 1.8rem;
         font-weight: 600;
         margin-bottom: 2rem;
-        padding: 15px;
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        border-radius: 15px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     .telenor-style {
         background: linear-gradient(135deg, #00B9E8 0%, #0066CC 100%);
@@ -84,14 +86,9 @@ st.markdown("""
         text-align: center;
         margin: 20px 0;
     }
-    .login-form-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        margin-top: 1rem;
-    }
     </style>
 """, unsafe_allow_html=True)
+
 
 # Team members list
 TEAM_MEMBERS = [
@@ -109,16 +106,16 @@ TEAM_MEMBERS = [
 
 # User credentials and roles (removed viewer account)
 USERS = {
-    "admin": {
-        "password": hashlib.sha256("admin123".encode()).hexdigest(),
-        "role": "manager",
-        "name": "Admin User",
+    "ahsan03h": {
+        "password": hashlib.sha256("ahsan123".encode()).hexdigest(),
+        "role": "Admin",
+        "name": "Muhammad Ahsan",
         "team_member": None
     },
-    "manager": {
-        "password": hashlib.sha256("manager123".encode()).hexdigest(),
-        "role": "manager",
-        "name": "Team Manager",
+    "ahsan.baqai": {
+        "password": hashlib.sha256("ahsan3188".encode()).hexdigest(),
+        "role": "Team Lead",
+        "name": "Muhammad Ahsan Baqai",
         "team_member": None
     },
     "laiba": {
@@ -136,7 +133,7 @@ USERS = {
     "abdul": {
         "password": hashlib.sha256("abdul123".encode()).hexdigest(),
         "role": "team_member",
-        "name": "Abdul MR",
+        "name": "Abdullah Umar",
         "team_member": "abdumr076 abdumr076"
     },
     "ahsan": {
@@ -265,8 +262,7 @@ def login_page():
                 col_btn1, col_btn2 = st.columns(2)
                 with col_btn1:
                     submit = st.form_submit_button("Sign In", use_container_width=True, type="primary")
-                with col_btn2:
-                    demo = st.form_submit_button("Guest Access", use_container_width=True, type="secondary")
+               
                 
                 if submit:
                     if username and password:
@@ -284,14 +280,6 @@ def login_page():
                             st.error("❌ Invalid credentials. Please try again.")
                     else:
                         st.warning("⚠️ Please enter both username and password")
-                
-                if demo:
-                    st.session_state.authenticated = True
-                    st.session_state.username = "demo"
-                    st.session_state.role = "viewer"
-                    st.session_state.name = "Demo User"
-                    st.session_state.team_member = None
-                    st.rerun()
             
             st.markdown("</div>", unsafe_allow_html=True)
     
@@ -793,58 +781,7 @@ def main_dashboard():
                 else:
                     st.info("No bugs resolved today yet. Keep working on your pending items!")
         
-        else:  # Viewer role
-            tabs = st.tabs([
-                "📊 Team Overview",
-                "📈 Status Distribution"
-            ])
-            
-            with tabs[0]:
-                st.subheader("Team Bug Overview")
-                member_counts = team_df['Submitted By'].value_counts()
-                
-                fig = px.bar(
-                    x=member_counts.values,
-                    y=[name.split()[0] for name in member_counts.index],
-                    orientation='h',
-                    title="Bugs by Team Member",
-                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with tabs[1]:
-                st.subheader("Bug Status Distribution")
-                status_dist = team_df['Status'].value_counts()
-                
-                fig = px.pie(
-                    values=status_dist.values,
-                    names=status_dist.index,
-                    title="Overall Status Distribution",
-                    hole=0.4
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    else:
-        st.info("👆 Please upload an Excel file from the bug portal to get started")
-        
-        if st.session_state.role == "viewer":
-            st.warning("As a viewer, you need a manager or team member to upload data first.")
-        
-        st.markdown("""
-        ### 📌 Dashboard Features:
-        
-        1. **Bug Tracking by Status**: Monitor bugs in different states
-        2. **Analytics**: Visual insights into bug distribution and trends
-        3. **Daily Progress**: Track bugs resolved today
-        4. **Comprehensive Reports**: Generate detailed summaries
-        5. **Real-time Updates**: All metrics update automatically
-        
-        ### 👥 Team Members Tracked:
-        """)
-        
-        for i, member in enumerate(TEAM_MEMBERS, 1):
-            st.write(f"{i}. {member.split()[0]}")
-
+       
 # Main app
 def main():
     init_session_state()
