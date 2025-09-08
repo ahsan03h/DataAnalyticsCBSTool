@@ -781,7 +781,58 @@ def main_dashboard():
                 else:
                     st.info("No bugs resolved today yet. Keep working on your pending items!")
         
-       
+        else:  # Viewer role
+            tabs = st.tabs([
+                "📊 Team Overview",
+                "📈 Status Distribution"
+            ])
+            
+            with tabs[0]:
+                st.subheader("Team Bug Overview")
+                member_counts = team_df['Submitted By'].value_counts()
+                
+                fig = px.bar(
+                    x=member_counts.values,
+                    y=[name.split()[0] for name in member_counts.index],
+                    orientation='h',
+                    title="Bugs by Team Member",
+                    labels={'x': 'Number of Bugs', 'y': 'Team Member'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with tabs[1]:
+                st.subheader("Bug Status Distribution")
+                status_dist = team_df['Status'].value_counts()
+                
+                fig = px.pie(
+                    values=status_dist.values,
+                    names=status_dist.index,
+                    title="Overall Status Distribution",
+                    hole=0.4
+                )
+                st.plotly_chart(fig, use_container_width=True)
+    
+    else:
+        st.info("👆 Please upload an Excel file from the bug portal to get started")
+        
+        if st.session_state.role == "viewer":
+            st.warning("As a viewer, you need a manager or team member to upload data first.")
+        
+        st.markdown("""
+        ### 📌 Dashboard Features:
+        
+        1. **Bug Tracking by Status**: Monitor bugs in different states
+        2. **Analytics**: Visual insights into bug distribution and trends
+        3. **Daily Progress**: Track bugs resolved today
+        4. **Comprehensive Reports**: Generate detailed summaries
+        5. **Real-time Updates**: All metrics update automatically
+        
+        ### 👥 Team Members Tracked:
+        """)
+        
+        for i, member in enumerate(TEAM_MEMBERS, 1):
+            st.write(f"{i}. {member.split()[0]}")
+
 # Main app
 def main():
     init_session_state()
