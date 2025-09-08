@@ -107,18 +107,18 @@ TEAM_MEMBERS = [
     "azan25 azan25"
 ]
 
-# User credentials and roles
+# User credentials and roles (removed viewer account)
 USERS = {
     "ahsan03h": {
-        "password": hashlib.sha256("3188jkjk".encode()).hexdigest(),
-        "role": "manager",
-        "name": "Admin User",
+        "password": hashlib.sha256("ahsan123".encode()).hexdigest(),
+        "role": "Admin",
+        "name": "Muhammad Ahsan",
         "team_member": None
     },
     "ahsan.baqai": {
         "password": hashlib.sha256("ahsan3188".encode()).hexdigest(),
-        "role": "manager",
-        "name": "Team Manager",
+        "role": "Team Lead",
+        "name": "Muhammad Ahsan Baqai",
         "team_member": None
     },
     "laiba": {
@@ -133,10 +133,10 @@ USERS = {
         "name": "Tooba Shahid",
         "team_member": "2toobashahid 2toobashahid"
     },
-    "abdullah.umar": {
+    "abdul": {
         "password": hashlib.sha256("abdul123".encode()).hexdigest(),
         "role": "team_member",
-        "name": "Abdul MR",
+        "name": "Abdullah Umar",
         "team_member": "abdumr076 abdumr076"
     },
     "ahsan": {
